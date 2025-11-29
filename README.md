@@ -8,10 +8,10 @@ NC-FLIX is an Android application that allows users to browse and stream movies 
 - **Search**: Allows users to search for movies and TV shows.
 - **Series Support**: Handles TV series with season and episode selection.
 - **Custom Player**:
-    - Embedded WebView player that removes ads and popups.
-    - Gesture controls (double-tap to seek, tap to play/pause).
-    - Auto-play and resume functionality.
-    - Automatic server switching if a source is dead.
+    - Native ExoPlayer for efficient video playback.
+    - Integrated ad-blocking for network requests during scraping.
+    - Standard ExoPlayer controls (play/pause, seek, buffering indicator).
+    - Keeps screen on during playback.
 
 ## Architecture
 
@@ -19,8 +19,10 @@ The application follows a standard Android architecture:
 
 -   **Model**: Data classes representing movies (`Movie.kt`).
 -   **View**: Activities and Layouts (`MainActivity`, `EpisodeActivity`, `PlayerActivity`).
+-   **ViewModel**: Manages UI-related data and business logic (`MainViewModel`, `EpisodeViewModel`, `PlayerViewModel`).
 -   **Adapter**: RecyclerView adapters for displaying lists (`MovieAdapter`, `EpisodeAdapter`).
 -   **Data/Repository**: Handles network requests and data parsing (`MovieRepository`).
+-   **Utilities**: Ad-blocking interceptors and Resource wrapper for robust error handling.
 
 ## Setup and Installation
 
@@ -47,19 +49,17 @@ The application follows a standard Android architecture:
 3.  **Search**: Use the search bar at the top to find specific titles.
 4.  **Watch Series**: If you select a TV series, you will be taken to a screen to select the season and episode.
 5.  **Player Controls**:
-    -   **Play/Pause**: Tap the center of the screen.
-    -   **Seek Forward 10s**: Double-tap the right side of the screen.
-    -   **Seek Backward 10s**: Double-tap the left side of the screen.
+    -   Standard ExoPlayer controls are available during playback.
 
 ## Roadmap / To-Do
 
 The following improvements are planned for future releases. Contributions are welcome!
 
-- [ ] **Architecture**: Migrate to MVVM (Model-View-ViewModel) architecture to better separate UI logic from data operations.
+- [x] **Architecture**: Migrate to MVVM (Model-View-ViewModel) architecture to better separate UI logic from data operations.
 - [ ] **Dependency Injection**: Implement Hilt or Koin for better dependency management and testability.
 - [ ] **Testing**: Add Unit tests for the Repository and ViewModels, and UI tests using Espresso/kakao.
-- [ ] **Error Handling**: Replace generic Exception handling with a robust Result/Resource wrapper (e.g., using `sealed class Result<T>`).
-- [ ] **Resources**: Extract hardcoded strings into `res/values/strings.xml` for localization support.
+- [x] **Error Handling**: Replace generic Exception handling with a robust Result/Resource wrapper (e.g., using `sealed class Result<T>`).
+- [x] **Resources**: Extract hardcoded strings into `res/values/strings.xml` for localization support.
 - [ ] **Data Source**: Add support for multiple streaming sources or a plugin system.
 - [ ] **Caching**: Implement a local database (Room) to cache movie data and playback progress.
 - [ ] **UI/UX**: Improve the UI design with Material Design 3 components and animations.
@@ -71,6 +71,7 @@ The following improvements are planned for future releases. Contributions are we
 -   **Coil**: For image loading.
 -   **Coroutines**: For asynchronous programming.
 -   **AndroidX Libraries**: Core, AppCompat, ConstraintLayout, RecyclerView, etc.
+-   **Media3 ExoPlayer**: For native video playback.
 
 ## Disclaimer
 
