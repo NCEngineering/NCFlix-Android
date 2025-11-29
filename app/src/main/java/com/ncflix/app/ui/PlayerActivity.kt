@@ -1,84 +1,107 @@
 package com.ncflix.app.ui
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AnimationUtils
+import android.view.animation.Animation
+import android.webkit.ConsoleMessage
+import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.viewModels
-import androidx.annotation.OptIn
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GestureDetectorCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import com.ncflix.app.R
 import com.ncflix.app.utils.Resource
 import com.ncflix.app.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
+import java.io.ByteArrayInputStream
+import com.ncflix.app.utils.AdBlocker
+import com.ncflix.app.utils.Constants
+import androidx.activity.viewModels
 
 class PlayerActivity : AppCompatActivity() {
 
     private val viewModel: PlayerViewModel by viewModels()
-    
-    private lateinit var playerView: PlayerView
+
+    // Views (Matching the WebView layout from your previous file dump)
+    private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private lateinit var txtStatus: TextView
-    private var player: ExoPlayer? = null
+    private lateinit var txtGestureFeedback: TextView
+
+    private lateinit var gestureDetector: GestureDetectorCompat
+
+    // State
+    private var serverList = ArrayList<String>()
+    private var currentServerIndex = 0
+    private var currentHost: String = ""
+    private var isVideoPlaying = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_player)
-        
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        playerView = findViewById(R.id.playerView)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        hideSystemUI()
+
+        setContentView(R.layout.activity_player)
+
+        // Initialize Views
+        webView = findViewById(R.id.webView)
         progressBar = findViewById(R.id.progressBar)
         txtStatus = findViewById(R.id.txtStatus)
+        txtGestureFeedback = findViewById(R.id.txtGestureFeedback)
 
-        playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-        playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
-        playerView.controllerAutoShow = true
-
-        hideSystemUI()
+        setupWebPlayer()
+        setupGestures()
 
         val episodeUrl = intent.getStringExtra("EPISODE_URL")
 
         if (episodeUrl != null) {
-            viewModel.loadStream(episodeUrl)
-        } else {
-            showError("Error: No URL provided")
-        }
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.streamState.collect { state ->
-                    when (state) {
-                        is Resource.Loading -> {
-                            txtStatus.text = "Finding best server..."
-                            txtStatus.visibility = View.VISIBLE
-                            progressBar.visibility = View.VISIBLE
-                        }
-                        is Resource.Success -> {
-                            progressBar.visibility = View.GONE
-                            txtStatus.visibility = View.GONE
-                            initializePlayer(state.data)
-                        }
-                        is Resource.Error -> {
-                            showError(state.message)
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.streamState.collect { state ->
+                        when (state) {
+                            is Resource.Loading -> {
+                                txtStatus.text = "Finding stream servers..."
+                                txtStatus.visibility = View.VISIBLE
+                                progressBar.visibility = View.VISIBLE
+                            }
+                            is Resource.Success -> {
+                                serverList = state.data
+                                loadCurrentServer()
+                            }
+                            is Resource.Error -> {
+                                showError(state.message)
+                            }
                         }
                     }
                 }
             }
+            viewModel.loadStream(episodeUrl)
+        } else {
+            showError("Error: No URL provided")
         }
     }
 
@@ -89,38 +112,343 @@ class PlayerActivity : AppCompatActivity() {
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
     }
 
-    @OptIn(UnstableApi::class)
-    private fun initializePlayer(url: String) {
-        val headers = mapOf(
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Referer" to "https://ww93.pencurimovie.bond/"
-        )
+    private fun loadCurrentServer() {
+        isVideoPlaying = false // Reset playback state
 
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(true)
-            .setDefaultRequestProperties(headers)
-            .setConnectTimeoutMs(15000)
-            .setReadTimeoutMs(15000)
+        if (currentServerIndex < serverList.size) {
+            val url = serverList[currentServerIndex]
+            try { currentHost = Uri.parse(url).host ?: "" } catch(e: Exception){}
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+            txtStatus.text = "Trying Server ${currentServerIndex + 1}..."
+            txtStatus.visibility = View.VISIBLE
+            progressBar.visibility = View.VISIBLE
 
-        player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(mediaSourceFactory)
-            .build()
+            println("NC-FLIX: Loading Embed -> $url")
+            val headers = mapOf("Referer" to Constants.BASE_URL)
+            webView.loadUrl(url, headers)
+        } else {
+            txtStatus.text = "Failed: All servers are dead."
+            progressBar.visibility = View.GONE
+        }
+    }
 
-        playerView.player = player
+    // --- WebView Configuration ---
 
-        val mediaItem = MediaItem.fromUri(url)
-        player?.setMediaItem(mediaItem)
-        player?.prepare()
-        player?.playWhenReady = true
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebPlayer() {
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
 
-        player?.addListener(object : Player.Listener {
-            override fun onPlayerError(error: PlaybackException) {
-                showError("Playback Error: ${error.message}")
-                error.printStackTrace()
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            allowFileAccess = true
+            allowContentAccess = true
+            setSupportMultipleWindows(true)
+            javaScriptCanOpenWindowsAutomatically = false
+            userAgentString = Constants.USER_AGENT
+        }
+
+        webView.addJavascriptInterface(WebAppInterface(this), "Android")
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean = true
+            override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean = false
+
+            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {}
+            override fun onHideCustomView() {}
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url.toString()
+                // Allow everything unless it's explicitly an Ad
+                if (url != null && AdBlocker.isAd(url)) {
+                    println("NC-FLIX: Nav Blocked (Ad) -> $url")
+                    return true
+                }
+                return false // Allow WebView to load the redirect
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    injectCSS()
+                    injectAutoPlay()
+                    injectAdBlockOverrides()
+                }, 1000)
+
+                // Delayed Error Detection
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (!isVideoPlaying) injectErrorDetector()
+                }, 7000)
+
+                injectResumeDetector()
+            }
+
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url.toString()
+                if (AdBlocker.isAd(url)) {
+                    println("NC-FLIX: Res Blocked (Ad) -> $url")
+                    return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+        }
+    }
+
+    private fun injectAdBlockOverrides() {
+        val js = AdBlocker.getDomBypasses()
+        webView.evaluateJavascript(js, null)
+    }
+
+    // --- Gesture Logic ---
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupGestures() {
+        // Initialize gesture detector after webView is initialized in onCreate
+        gestureDetector = GestureDetectorCompat(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                val screenWidth = webView.width
+                val tapX = e.x
+
+                if (tapX < screenWidth / 3) {
+                    seekBackward()
+                    showGestureFeedback("<< 10s")
+                } else if (tapX > (screenWidth * 2) / 3) {
+                    seekForward()
+                    showGestureFeedback("10s >>")
+                } else {
+                    togglePlayPause()
+                }
+                return true
+            }
+            override fun onDown(e: MotionEvent): Boolean = true
+        })
+
+        webView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false
+        }
+    }
+
+    private fun showGestureFeedback(text: String) {
+        txtGestureFeedback.text = text
+        txtGestureFeedback.visibility = View.VISIBLE
+
+        val animation = AnimationUtils.loadAnimation(this, R.anim.fade_in_out)
+
+        animation.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {}
+            override fun onAnimationRepeat(animation: Animation?) {}
+            override fun onAnimationEnd(animation: Animation?) {
+                txtGestureFeedback.visibility = View.GONE
             }
         })
+        txtGestureFeedback.startAnimation(animation)
+    }
+
+    private fun seekForward() {
+        webView.evaluateJavascript("document.querySelector('video').currentTime += 10;", null)
+    }
+
+    private fun seekBackward() {
+        webView.evaluateJavascript("document.querySelector('video').currentTime -= 10;", null)
+    }
+
+    private fun togglePlayPause() {
+        webView.evaluateJavascript("""
+            (function() {
+                var v = document.querySelector('video');
+                if (v) {
+                    if (v.paused) {
+                        v.play();
+                        window.Android.onPlayPauseToggled('play');
+                    } else {
+                        v.pause();
+                        window.Android.onPlayPauseToggled('pause');
+                    }
+                }
+            })();
+        """, null)
+    }
+
+
+    // --- JS Interface (Bridge) ---
+
+    inner class WebAppInterface(private val context: Context) {
+        @JavascriptInterface
+        fun onErrorDetected() {
+            runOnUiThread {
+                if (!isVideoPlaying) {
+                    println("NC-FLIX: Dead Link Confirmed by JS (Visual Check)! Switching...")
+                    currentServerIndex++
+                    loadCurrentServer()
+                }
+            }
+        }
+        @JavascriptInterface
+        fun onResumeDetected(time: String) {
+            runOnUiThread { showResumeDialog(time) }
+        }
+        @JavascriptInterface
+        fun onVideoStarted() {
+            runOnUiThread {
+                if (!isVideoPlaying) {
+                    println("NC-FLIX: Video Started! Locking server.")
+                    isVideoPlaying = true
+                    progressBar.visibility = View.GONE
+                    txtStatus.visibility = View.GONE
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun onPlayPauseToggled(state: String) {
+            runOnUiThread {
+                if (state == "play") {
+                    showGestureFeedback("▶")
+                } else if (state == "pause") {
+                    showGestureFeedback("⏸")
+                }
+            }
+        }
+    }
+
+    // --- Native UI Handlers ---
+
+    private fun showResumeDialog(time: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Resume Playing?")
+            .setMessage("Left off at $time. Resume?")
+            .setCancelable(false)
+            .setPositiveButton("Yes") { _, _ ->
+                webView.evaluateJavascript("document.querySelector('#yesplease').click();", null)
+                Handler(Looper.getMainLooper()).postDelayed({ injectAutoPlay() }, 1000)
+            }
+            .setNegativeButton("No") { _, _ ->
+                webView.evaluateJavascript("document.querySelector('#no_thanks').click();", null)
+                Handler(Looper.getMainLooper()).postDelayed({ injectAutoPlay() }, 1000)
+            }
+            .show()
+    }
+
+    private fun injectErrorDetector() {
+        val js = """
+            (function() {
+                var errorImg = document.querySelector('img[src*="no_video"]');
+                var h1 = document.querySelector('h1');
+                
+                var isErrorVisible = false;
+                
+                if (errorImg && errorImg.offsetParent !== null) {
+                    isErrorVisible = true;
+                }
+                
+                if (h1 && h1.innerText.includes("Not Found") && h1.offsetParent !== null) {
+                    isErrorVisible = true;
+                }
+                
+                if (isErrorVisible) {
+                    window.Android.onErrorDetected();
+                }
+                
+                var video = document.querySelector('video');
+                if (video) {
+                    video.addEventListener('playing', function() { window.Android.onVideoStarted(); });
+                }
+            })();
+        """.trimIndent().replace("\n", " ")
+        webView.evaluateJavascript(js, null)
+    }
+
+    private fun injectResumeDetector() {
+        val hideResumePopupCss = "#checkresume_div_n { display: none !important; }"
+        val injectHideJs = "var style = document.createElement('style'); style.innerHTML = '$hideResumePopupCss'; document.head.appendChild(style);"
+        webView.evaluateJavascript(injectHideJs, null)
+
+        val js = """
+            (function() {
+                var checkResume = setInterval(function() {
+                    var resumeDiv = document.querySelector('#checkresume_div_n');
+                    if (resumeDiv) {
+                        var timeSpan = document.querySelector('#lefttime');
+                        var time = timeSpan ? timeSpan.innerText : "Unknown";
+                        window.Android.onResumeDetected(time);
+                        clearInterval(checkResume);
+                    }
+                }, 500);
+                setTimeout(function(){ clearInterval(checkResume); }, 5000); 
+            })();
+        """.trimIndent().replace("\n", " ")
+        webView.evaluateJavascript(js, null)
+    }
+
+    private fun injectCSS() {
+        val css = """
+            #loading,.loading,.ad-container,.popup,.banner,#ads,.jw-logo,.watermark,.eruda-container{display:none !important;}
+            body, html { background-color: black !important; margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden !important; }
+            video { width: 100% !important; height: 100vh !important; object-fit: contain; }
+            
+            /* HIDE ALL CONTROLS FOR GESTURE CONTROL (Scrubbing, Play/Pause via taps) */
+            .vjs-control-bar, .jw-controlbar { 
+                opacity: 0 !important; 
+                pointer-events: none !important; 
+                display: none !important;
+            } 
+            
+            .vjs-big-play-button { display: none !important; }
+            
+            #checkresume_div_n { display: none !important; }
+        """.trimIndent().replace("\n", " ") + " " + AdBlocker.getCssRules()
+        
+        webView.evaluateJavascript("var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);", null)
+    }
+
+    private fun injectAutoPlay() {
+        val js = """
+            (function() {
+                var attempts = 0;
+                var interval = setInterval(function() {
+                    var v = document.querySelector('video');
+                    
+                    // STOP if video is already playing
+                    if (v && !v.paused && v.currentTime > 0) {
+                        clearInterval(interval);
+                        return;
+                    }
+
+                    // 1. Click Center (To clear ad overlays)
+                    var centerEl = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+                    if(centerEl && centerEl !== v) centerEl.click();
+                    
+                    setTimeout(function() {
+                        // 2. Click Play Button
+                        var btn = document.querySelector('.vjs-play-control') || 
+                                  document.querySelector('.jw-icon-play') ||     
+                                  document.querySelector('button[aria-label="Play"]') ||
+                                  document.querySelector('button[title="Play"]');
+
+                        if (btn) { 
+                            btn.click(); 
+                        } else if (v && v.paused) {
+                            v.muted = false; 
+                            v.play(); 
+                        }
+                    }, 300);
+                    
+                    attempts++;
+                    if (attempts > 20) clearInterval(interval);
+                }, 500);
+            })();
+        """.trimIndent().replace("\n", " ")
+        webView.evaluateJavascript(js, null)
     }
 
     private fun hideSystemUI() {
@@ -129,14 +457,8 @@ class PlayerActivity : AppCompatActivity() {
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
     }
 
-    override fun onPause() {
-        super.onPause()
-        player?.pause()
-    }
-
     override fun onStop() {
         super.onStop()
-        player?.release()
-        player = null
+        webView.destroy()
     }
 }

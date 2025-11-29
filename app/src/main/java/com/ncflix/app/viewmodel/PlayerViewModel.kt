@@ -8,12 +8,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.ArrayList
 
 class PlayerViewModel : ViewModel() {
     private val repository = MovieRepository()
 
-    private val _streamState = MutableStateFlow<Resource<String>>(Resource.Loading)
-    val streamState: StateFlow<Resource<String>> = _streamState.asStateFlow()
+    // CRITICAL FIX: Change type to ArrayList<String>
+    private val _streamState = MutableStateFlow<Resource<ArrayList<String>>>(Resource.Loading)
+    val streamState: StateFlow<Resource<ArrayList<String>>> = _streamState.asStateFlow()
 
     fun loadStream(url: String) {
         viewModelScope.launch {
