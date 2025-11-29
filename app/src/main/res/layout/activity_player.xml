@@ -6,16 +6,18 @@
     android:background="#000000"
     android:keepScreenOn="true">
 
-    <!-- THE WEB PLAYER -->
-    <WebView
-        android:id="@+id/webView"
+    <!-- EXO PLAYER VIEW -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#000000"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:show_buffering="always" 
+        app:resize_mode="fit" />
 
     <!-- LOADING UI -->
     <ProgressBar
@@ -33,29 +35,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Connecting to Server..."
+        android:text="@string/connecting_to_server"
         android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/progressBar" />
-
-    <!-- NEW: GESTURE FEEDBACK (ANIMATION TARGET) -->
-    <TextView
-        android:id="@+id/txtGestureFeedback"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="#A0000000"
-        android:paddingStart="24dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="12dp"
-        android:textColor="#FFFFFF"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -2,142 +2,98 @@ package com.ncflix.app.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SearchView
-import androidx.constraintlayout.widget.Group
+import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.ncflix.app.R
 import com.ncflix.app.adapter.MovieAdapter
-import com.ncflix.app.data.MovieRepository
 import com.ncflix.app.model.Movie
-import kotlinx.coroutines.Job
+import com.ncflix.app.utils.Resource
+import com.ncflix.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 
-/**
- * The main entry point of the application.
- *
- * This activity displays the home screen, which typically includes a featured "hero" movie,
- * a list of trending movies, and a search interface. It handles navigation to the [PlayerActivity]
- * for movies or [EpisodeActivity] for series.
- */
 class MainActivity : AppCompatActivity() {
 
-    private val repository = MovieRepository()
-    private lateinit var adapter: MovieAdapter
-    private var searchJob: Job? = null
+    private val viewModel: MainViewModel by viewModels()
 
-    /**
-     * Called when the activity is starting.
-     *
-     * Initializes the UI components including the hero section, movie list RecyclerView,
-     * and SearchView. It also initiates the data fetch for the home screen.
-     *
-     * @param savedInstanceState If the activity is being re-initialized after
-     *     previously being shut down then this Bundle contains the data it most
-     *     recently supplied in [onSaveInstanceState].  <b><i>Note: Otherwise it is null.</i></b>
-     */
+    private lateinit var imgHero: ImageView
+    private lateinit var txtHeroTitle: TextView
+    private lateinit var btnPlayHero: Button
+    private lateinit var rvTrending: RecyclerView
+    private lateinit var loadingIndicator: ProgressBar
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val imgHero = findViewById<ImageView>(R.id.imgHero)
-        val txtHeroTitle = findViewById<TextView>(R.id.txtHeroTitle)
-        val btnPlayHero = findViewById<Button>(R.id.btnPlayHero)
-        val rvMovies = findViewById<RecyclerView>(R.id.rvMovies)
-        val groupHero = findViewById<Group>(R.id.groupHero)
-        val searchView = findViewById<SearchView>(R.id.searchView)
-        val lblListHeader = findViewById<TextView>(R.id.lblListHeader)
+        // Initialize Views
+        imgHero = findViewById(R.id.imgHero)
+        txtHeroTitle = findViewById(R.id.txtHeroTitle)
+        btnPlayHero = findViewById(R.id.btnPlayHero)
+        rvTrending = findViewById(R.id.rvTrending)
+        loadingIndicator = findViewById(R.id.loadingIndicator)
 
-        rvMovies.layoutManager = GridLayoutManager(this, 3)
-
-        adapter = MovieAdapter(emptyList()) { selectedMovie ->
-            openPlayer(selectedMovie)
-        }
-        rvMovies.adapter = adapter
-
+        // Observe State
         lifecycleScope.launch {
-            val (heroMovie, trendingList) = repository.fetchHomeData()
-            if (heroMovie != null) {
-                imgHero.load(heroMovie.posterUrl)
-                txtHeroTitle.text = heroMovie.title
-                btnPlayHero.setOnClickListener { openPlayer(heroMovie) }
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.homeState.collect { state ->
+                    when (state) {
+                        is Resource.Loading -> {
+                            loadingIndicator.visibility = View.VISIBLE
+                            rvTrending.visibility = View.GONE
+                        }
+                        is Resource.Success -> {
+                            loadingIndicator.visibility = View.GONE
+                            rvTrending.visibility = View.VISIBLE
+                            
+                            val (heroMovie, trendingList) = state.data
+                            
+                            imgHero.load(heroMovie.posterUrl)
+                            txtHeroTitle.text = heroMovie.title
+                            btnPlayHero.setOnClickListener { openPlayer(heroMovie) }
 
-                adapter = MovieAdapter(trendingList) { openPlayer(it) }
-                rvMovies.adapter = adapter
-            }
-        }
-
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                query?.let { performSearch(it, groupHero, lblListHeader, rvMovies) }
-                return true
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean = false
-        })
-    }
-
-    /**
-     * Performs a search for movies based on the user's query.
-     *
-     * This method cancels any existing search job and starts a new one to fetch results
-     * from the repository. It updates the UI to hide the hero section and display the results.
-     *
-     * @param query The search string entered by the user.
-     * @param heroGroup The view group containing the hero section elements (to be hidden).
-     * @param header The TextView used to display the search status.
-     * @param rv The RecyclerView to populate with search results.
-     */
-    private fun performSearch(query: String, heroGroup: Group, header: TextView, rv: RecyclerView) {
-        searchJob?.cancel()
-        searchJob = lifecycleScope.launch {
-            Toast.makeText(this@MainActivity, "Searching...", Toast.LENGTH_SHORT).show()
-            heroGroup.visibility = View.GONE
-            header.text = "Search Results: $query"
-
-            val results = repository.searchMovies(query)
-
-            if (results.isNotEmpty()) {
-                adapter = MovieAdapter(results) { openPlayer(it) }
-                rv.adapter = adapter
-            } else {
-                Toast.makeText(this@MainActivity, "No movies found", Toast.LENGTH_LONG).show()
+                            val adapter = MovieAdapter(trendingList) { selectedMovie ->
+                                openPlayer(selectedMovie)
+                            }
+                            rvTrending.adapter = adapter
+                        }
+                        is Resource.Error -> {
+                            loadingIndicator.visibility = View.GONE
+                            Toast.makeText(this@MainActivity, state.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
             }
         }
     }
 
-    /**
-     * Handles the navigation when a movie or series is selected.
-     *
-     * It checks the URL of the selected item to determine if it is a series or a movie/episode.
-     * If it's a series, it navigates to [EpisodeActivity]. Otherwise, it navigates to [PlayerActivity].
-     *
-     * @param movie The [Movie] object representing the selected item.
-     */
     private fun openPlayer(movie: Movie) {
-        Log.d("NC-FLIX", "Opening: ${movie.title} | Link: ${movie.pageLink}")
-
-        // SMART ROUTING FIX: Check for /series/ in the URL
-        if (movie.pageLink.contains("/series/", ignoreCase = true)) {
-            Log.d("NC-FLIX", "Identified as SERIES. Opening Episode List.")
-            val intent = Intent(this, EpisodeActivity::class.java)
-            intent.putExtra("SERIES", movie)
-            startActivity(intent)
-        } else {
-            Log.d("NC-FLIX", "Identified as MOVIE/EPISODE. Opening Player.")
-            // Use PlayerActivity directly (which contains the WebView for playback)
-            val intent = Intent(this, PlayerActivity::class.java)
-            intent.putExtra("EPISODE_URL", movie.pageLink)
-            startActivity(intent)
-        }
+        val intent = Intent(this, PlayerActivity::class.java) // Changed from EpisodeActivity to PlayerActivity for direct play, logic can be improved to detect Series/Movie
+        // Ideally, we check if it's a series. For now, let's assume if it has "Season" in title it's a series? 
+        // Or just try to scrape episodes first. 
+        // For simplicity in this iteration: Direct play if it's a movie, or go to EpisodeActivity if logic dictates.
+        // Let's route to EpisodeActivity by default for detailed view if implemented, or keep it simple.
+        
+        // Let's use a simple heuristic: If it is homepage trending, it might be mixed.
+        // But the user flow in README says "Watch Series: If you select a TV series..."
+        // For now, let's route to EpisodeActivity if we want to support seasons, 
+        // BUT EpisodeActivity needs to be robust.
+        // Let's stick to PlayerActivity for now for the "Play" button, but for the list click?
+        
+        // Let's route to EpisodeActivity to check for seasons. If only 1 "episode" found (the movie), it auto-plays or shows 1 item.
+        val episodeIntent = Intent(this, EpisodeActivity::class.java)
+        episodeIntent.putExtra("SERIES", movie)
+        startActivity(episodeIntent)
     }
 }
