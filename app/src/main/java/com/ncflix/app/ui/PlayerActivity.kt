@@ -31,9 +31,17 @@ import androidx.core.view.GestureDetectorCompat
 import androidx.lifecycle.lifecycleScope
 import com.ncflix.app.R
 import com.ncflix.app.data.MovieRepository
+import com.ncflix.app.utils.Constants
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 
+/**
+ * Activity for playing videos (movies or episodes).
+ *
+ * This activity hosts a WebView to play content from external streaming servers.
+ * It handles server selection, ad blocking, custom gesture controls, and integration
+ * with the web player via JavaScript injection.
+ */
 class PlayerActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
@@ -49,15 +57,16 @@ class PlayerActivity : AppCompatActivity() {
     private var isVideoPlaying = false
     private lateinit var gestureDetector: GestureDetectorCompat
 
-    private val adBlockDomains = setOf(
-        "googleads", "doubleclick", "analytics", "facebook.com", "connect.facebook.net",
-        "adsco.re", "pop", "bet", "casino", "mc.yandex", "creativecdn",
-        "googletagmanager", "scorecardresearch", "quantserve", "adroll",
-        "taboola", "outbrain", "zedo", "click", "tracker", "pixel", "adsystem",
-        "histats", "statcounter", "popads", "popcash", "propellerads", "revenuehits", "upsetking.com",
-        "walterprettytheir.com"
-    )
-
+    /**
+     * Called when the activity is starting.
+     *
+     * Initializes the WebView and other UI components, hides the system UI for fullscreen playback,
+     * sets up gesture detectors, and starts the server initialization process if an episode URL is provided.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after
+     *     previously being shut down then this Bundle contains the data it most
+     *     recently supplied in [onSaveInstanceState].  <b><i>Note: Otherwise it is null.</i></b>
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
@@ -77,6 +86,11 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Sets up gesture detection for video controls.
+     *
+     * Handles double taps for seeking (left for backward, right for forward) and play/pause toggling.
+     */
     @SuppressLint("ClickableViewAccessibility")
     private fun setupGestures() {
         gestureDetector = GestureDetectorCompat(this, object : GestureDetector.SimpleOnGestureListener() {
@@ -105,6 +119,11 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Displays a temporary visual feedback for gestures.
+     *
+     * @param text The text to display (e.g., "10s >>").
+     */
     private fun showGestureFeedback(text: String) {
         txtGestureFeedback.text = text
         txtGestureFeedback.visibility = View.VISIBLE
@@ -121,14 +140,23 @@ class PlayerActivity : AppCompatActivity() {
         txtGestureFeedback.startAnimation(animation)
     }
 
+    /**
+     * Seeks forward in the video by 10 seconds via JavaScript injection.
+     */
     private fun seekForward() {
         webView.evaluateJavascript("document.querySelector('video').currentTime += 10;", null)
     }
 
+    /**
+     * Seeks backward in the video by 10 seconds via JavaScript injection.
+     */
     private fun seekBackward() {
         webView.evaluateJavascript("document.querySelector('video').currentTime -= 10;", null)
     }
 
+    /**
+     * Toggles play/pause state of the video via JavaScript injection.
+     */
     private fun togglePlayPause() {
         webView.evaluateJavascript("""
             (function() {
@@ -146,6 +174,11 @@ class PlayerActivity : AppCompatActivity() {
         """, null)
     }
 
+    /**
+     * Initializes the list of available video servers for the given episode URL.
+     *
+     * @param url The URL of the episode page.
+     */
     private fun initializeServers(url: String) {
         lifecycleScope.launch {
             txtStatus.text = "Scanning Servers..."
@@ -160,6 +193,11 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Loads the current server URL into the WebView.
+     *
+     * Iterates through the [serverList]. If the index is out of bounds, it indicates all servers failed.
+     */
     private fun loadCurrentServer() {
         if (currentServerIndex < serverList.size) {
             val url = serverList[currentServerIndex]
@@ -178,6 +216,12 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Configures the WebView settings and clients.
+     *
+     * Enables JavaScript, DOM storage, and sets up custom [WebChromeClient] and [WebViewClient]
+     * to handle content loading, ad blocking, and JavaScript injection.
+     */
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebPlayer() {
         val cookieManager = CookieManager.getInstance()
@@ -245,6 +289,9 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Injects JavaScript to override ad-related behaviors like window.open and untrusted clicks.
+     */
     private fun injectAdBlockOverrides() {
         val js = """
             (function() {
@@ -261,14 +308,26 @@ class PlayerActivity : AppCompatActivity() {
         webView.evaluateJavascript(js, null)
     }
 
+    /**
+     * Checks if a URL matches known ad domains.
+     *
+     * @param url The URL to check.
+     * @return True if the URL is an ad, false otherwise.
+     */
     private fun isAd(url: String): Boolean {
-        for (domain in adBlockDomains) {
+        for (domain in Constants.AD_BLOCK_DOMAINS) {
             if (url.contains(domain)) return true
         }
         return false
     }
 
+    /**
+     * Javascript Interface for communication between the WebView and the Android application.
+     */
     inner class WebAppInterface(private val context: Context) {
+        /**
+         * Called when a playback error is detected via JavaScript.
+         */
         @JavascriptInterface
         fun onErrorDetected() {
             runOnUiThread {
@@ -279,10 +338,20 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
         }
+
+        /**
+         * Called when the resume popup is detected via JavaScript.
+         *
+         * @param time The timestamp where playback stopped.
+         */
         @JavascriptInterface
         fun onResumeDetected(time: String) {
             runOnUiThread { showResumeDialog(time) }
         }
+
+        /**
+         * Called when the video starts playing.
+         */
         @JavascriptInterface
         fun onVideoStarted() {
             runOnUiThread {
@@ -295,6 +364,11 @@ class PlayerActivity : AppCompatActivity() {
             }
         }
 
+        /**
+         * Called when play/pause is toggled via JavaScript.
+         *
+         * @param state The new state ("play" or "pause").
+         */
         @JavascriptInterface
         fun onPlayPauseToggled(state: String) {
             runOnUiThread {
@@ -307,6 +381,11 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Shows a dialog asking the user if they want to resume playback from a previous position.
+     *
+     * @param time The timestamp string.
+     */
     private fun showResumeDialog(time: String) {
         AlertDialog.Builder(this)
             .setTitle("Resume Playing?")
@@ -323,6 +402,9 @@ class PlayerActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * Injects JavaScript to detect video playback errors (e.g., "Not Found").
+     */
     private fun injectErrorDetector() {
         val js = """
             (function() {
@@ -353,6 +435,9 @@ class PlayerActivity : AppCompatActivity() {
         webView.evaluateJavascript(js, null)
     }
 
+    /**
+     * Injects JavaScript to detect the resume playback popup.
+     */
     private fun injectResumeDetector() {
         val hideResumePopupCss = "#checkresume_div_n { display: none !important; }"
         val injectHideJs = "var style = document.createElement('style'); style.innerHTML = '$hideResumePopupCss'; document.head.appendChild(style);"
@@ -375,6 +460,9 @@ class PlayerActivity : AppCompatActivity() {
         webView.evaluateJavascript(js, null)
     }
 
+    /**
+     * Injects CSS to hide controls, ads, and force fullscreen.
+     */
     private fun injectCSS() {
         // HIDES ALL CONTROLS AND FORCES FULLSCREEN VIEWPORT
         val css = """
@@ -396,6 +484,9 @@ class PlayerActivity : AppCompatActivity() {
         webView.evaluateJavascript("var style = document.createElement('style'); style.innerHTML = '$css'; document.head.appendChild(style);", null)
     }
 
+    /**
+     * Injects JavaScript to attempt autoplay.
+     */
     private fun injectAutoPlay() {
         val js = """
             (function() {
@@ -436,12 +527,20 @@ class PlayerActivity : AppCompatActivity() {
         webView.evaluateJavascript(js, null)
     }
 
+    /**
+     * Hides the system UI to enable immersive fullscreen mode.
+     */
     private fun hideSystemUI() {
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
     }
 
+    /**
+     * Called when the activity is stopped.
+     *
+     * Destroys the WebView to release resources.
+     */
     override fun onStop() {
         super.onStop()
         webView.destroy()
