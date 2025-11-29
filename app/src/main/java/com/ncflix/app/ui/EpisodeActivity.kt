@@ -18,6 +18,13 @@ import com.ncflix.app.data.MovieRepository
 import com.ncflix.app.model.Movie
 import kotlinx.coroutines.launch
 
+/**
+ * Activity for displaying the details of a TV series, including its seasons and episodes.
+ *
+ * This activity receives a [Movie] object representing the series via an Intent.
+ * It fetches the available seasons and episodes, displays them, and allows the user to
+ * select a season to filter episodes. Clicking an episode launches the [PlayerActivity].
+ */
 class EpisodeActivity : AppCompatActivity() {
 
     private lateinit var rvEpisodes: RecyclerView
@@ -28,6 +35,16 @@ class EpisodeActivity : AppCompatActivity() {
     // Store all data: Map of "Season Name" -> List of Episodes
     private var allSeasonsData: Map<String, List<Movie>> = emptyMap()
 
+    /**
+     * Called when the activity is starting.
+     *
+     * Initializes the UI components, retrieves the series data from the intent,
+     * and initiates the fetching of season and episode data.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after
+     *     previously being shut down then this Bundle contains the data it most
+     *     recently supplied in [onSaveInstanceState].  <b><i>Note: Otherwise it is null.</i></b>
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_episode)
@@ -51,6 +68,14 @@ class EpisodeActivity : AppCompatActivity() {
         fetchSeasons(series.pageLink)
     }
 
+    /**
+     * Fetches the seasons and episodes for the series from the repository.
+     *
+     * This method runs asynchronously using [lifecycleScope]. Upon successful completion,
+     * it calls [setupSeasonDropdown]. If no episodes are found, it displays a toast message.
+     *
+     * @param url The URL of the series page.
+     */
     private fun fetchSeasons(url: String) {
         lifecycleScope.launch {
             Toast.makeText(this@EpisodeActivity, "Loading Seasons...", Toast.LENGTH_SHORT).show()
@@ -66,6 +91,13 @@ class EpisodeActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Configures the season selection dropdown (Spinner).
+     *
+     * If multiple seasons are available, it populates the spinner and sets up a listener
+     * to update the episode list when a season is selected. If only one season exists,
+     * the spinner is hidden and the episode list is updated immediately.
+     */
     private fun setupSeasonDropdown() {
         val seasonNames = allSeasonsData.keys.toList()
 
@@ -94,6 +126,11 @@ class EpisodeActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Updates the RecyclerView with the list of episodes for the specified season.
+     *
+     * @param seasonName The name of the season to display (key in [allSeasonsData]).
+     */
     private fun updateEpisodeList(seasonName: String) {
         val episodes = allSeasonsData[seasonName] ?: emptyList()
 
