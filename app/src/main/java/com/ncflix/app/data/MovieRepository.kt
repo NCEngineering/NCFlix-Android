@@ -1,6 +1,7 @@
 package com.ncflix.app.data
 
 import com.ncflix.app.model.Movie
+import com.ncflix.app.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -22,15 +23,6 @@ import java.util.regex.Pattern
  */
 class MovieRepository {
 
-    private val baseUrl = "https://ww93.pencurimovie.bond"
-    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
-
-    private val cookies = mapOf(
-        "_ga" to "GA1.1.1793413717.1764381264",
-        "wpdiscuz_hide_bubble_hint" to "1",
-        "_ga_BS36YHXFDN" to "GS2.1.s1764381264\$o1\$g1\$t1764381686\$j60\$l0\$h0"
-    )
-
     private val client = OkHttpClient.Builder()
         .followRedirects(true)
         .followSslRedirects(true)
@@ -44,8 +36,12 @@ class MovieRepository {
      */
     suspend fun searchMovies(query: String): List<Movie> = withContext(Dispatchers.IO) {
         try {
-            val searchUrl = "$baseUrl/?s=$query"
-            val doc = Jsoup.connect(searchUrl).userAgent(userAgent).cookies(cookies).timeout(10000).get()
+            val searchUrl = "${Constants.BASE_URL}/?s=$query"
+            val doc = Jsoup.connect(searchUrl)
+                .userAgent(Constants.USER_AGENT)
+                .cookies(Constants.COOKIES)
+                .timeout(10000)
+                .get()
             return@withContext parseMovies(doc)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -63,7 +59,11 @@ class MovieRepository {
      */
     suspend fun fetchHomeData(): Pair<Movie?, List<Movie>> = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.connect(baseUrl).userAgent(userAgent).cookies(cookies).timeout(10000).get()
+            val doc = Jsoup.connect(Constants.BASE_URL)
+                .userAgent(Constants.USER_AGENT)
+                .cookies(Constants.COOKIES)
+                .timeout(10000)
+                .get()
             val allMovies = parseMovies(doc)
             if (allMovies.isNotEmpty()) {
                 return@withContext Pair(allMovies.first(), allMovies.drop(1))
@@ -84,7 +84,11 @@ class MovieRepository {
 
         try {
             println("NC-FLIX: Fetching Series -> $seriesUrl")
-            val doc = Jsoup.connect(seriesUrl).userAgent(userAgent).cookies(cookies).timeout(10000).get()
+            val doc = Jsoup.connect(seriesUrl)
+                .userAgent(Constants.USER_AGENT)
+                .cookies(Constants.COOKIES)
+                .timeout(10000)
+                .get()
 
             val seasonDivs = doc.select("div.tvseason")
 
@@ -126,7 +130,11 @@ class MovieRepository {
 
         try {
             println("NC-FLIX: Visiting Episode -> $episodeUrl")
-            val doc = Jsoup.connect(episodeUrl).userAgent(userAgent).cookies(cookies).header("Referer", baseUrl).get()
+            val doc = Jsoup.connect(episodeUrl)
+                .userAgent(Constants.USER_AGENT)
+                .cookies(Constants.COOKIES)
+                .header("Referer", Constants.BASE_URL)
+                .get()
 
             val iframes = doc.select("div#player2 iframe[data-src]")
 
@@ -183,7 +191,10 @@ class MovieRepository {
      */
     private fun resolveRedirect(url: String): String {
         return try {
-            val request = Request.Builder().url(url).header("User-Agent", userAgent).header("Referer", baseUrl).build()
+            val request = Request.Builder().url(url)
+                .header("User-Agent", Constants.USER_AGENT)
+                .header("Referer", Constants.BASE_URL)
+                .build()
             client.newCall(request).execute().use { it.request.url.toString() }
         } catch (e: Exception) { url }
     }

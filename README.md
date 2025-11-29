@@ -51,6 +51,19 @@ The application follows a standard Android architecture:
     -   **Seek Forward 10s**: Double-tap the right side of the screen.
     -   **Seek Backward 10s**: Double-tap the left side of the screen.
 
+## Roadmap / To-Do
+
+The following improvements are planned for future releases. Contributions are welcome!
+
+- [ ] **Architecture**: Migrate to MVVM (Model-View-ViewModel) architecture to better separate UI logic from data operations.
+- [ ] **Dependency Injection**: Implement Hilt or Koin for better dependency management and testability.
+- [ ] **Testing**: Add Unit tests for the Repository and ViewModels, and UI tests using Espresso/kakao.
+- [ ] **Error Handling**: Replace generic Exception handling with a robust Result/Resource wrapper (e.g., using `sealed class Result<T>`).
+- [ ] **Resources**: Extract hardcoded strings into `res/values/strings.xml` for localization support.
+- [ ] **Data Source**: Add support for multiple streaming sources or a plugin system.
+- [ ] **Caching**: Implement a local database (Room) to cache movie data and playback progress.
+- [ ] **UI/UX**: Improve the UI design with Material Design 3 components and animations.
+
 ## Dependencies
 
 -   **Jsoup**: For HTML parsing and web scraping.

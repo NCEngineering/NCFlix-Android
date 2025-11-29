@@ -31,6 +31,7 @@ import androidx.core.view.GestureDetectorCompat
 import androidx.lifecycle.lifecycleScope
 import com.ncflix.app.R
 import com.ncflix.app.data.MovieRepository
+import com.ncflix.app.utils.Constants
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 
@@ -55,15 +56,6 @@ class PlayerActivity : AppCompatActivity() {
 
     private var isVideoPlaying = false
     private lateinit var gestureDetector: GestureDetectorCompat
-
-    private val adBlockDomains = setOf(
-        "googleads", "doubleclick", "analytics", "facebook.com", "connect.facebook.net",
-        "adsco.re", "pop", "bet", "casino", "mc.yandex", "creativecdn",
-        "googletagmanager", "scorecardresearch", "quantserve", "adroll",
-        "taboola", "outbrain", "zedo", "click", "tracker", "pixel", "adsystem",
-        "histats", "statcounter", "popads", "popcash", "propellerads", "revenuehits", "upsetking.com",
-        "walterprettytheir.com"
-    )
 
     /**
      * Called when the activity is starting.
@@ -323,7 +315,7 @@ class PlayerActivity : AppCompatActivity() {
      * @return True if the URL is an ad, false otherwise.
      */
     private fun isAd(url: String): Boolean {
-        for (domain in adBlockDomains) {
+        for (domain in Constants.AD_BLOCK_DOMAINS) {
             if (url.contains(domain)) return true
         }
         return false
