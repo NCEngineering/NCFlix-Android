@@ -11,6 +11,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.regex.Pattern
 
+/**
+ * Repository responsible for fetching and parsing movie data from an external source.
+ *
+ * This class handles network operations including searching for movies, fetching home page data,
+ * retrieving episode lists for series, and extracting video server URLs. It uses Jsoup for HTML
+ * parsing and OkHttp for network requests.
+ *
+ * The repository acts as a data abstraction layer for the application.
+ */
 class MovieRepository {
 
     private val baseUrl = "https://ww93.pencurimovie.bond"
@@ -27,6 +36,12 @@ class MovieRepository {
         .followSslRedirects(true)
         .build()
 
+    /**
+     * Searches for movies matching the given query string.
+     *
+     * @param query The search keyword or phrase.
+     * @return A list of [Movie] objects matching the query. Returns an empty list if an error occurs.
+     */
     suspend fun searchMovies(query: String): List<Movie> = withContext(Dispatchers.IO) {
         try {
             val searchUrl = "$baseUrl/?s=$query"
@@ -38,6 +53,14 @@ class MovieRepository {
         }
     }
 
+    /**
+     * Fetches the data for the home screen.
+     *
+     * This typically includes a featured movie and a list of other movies.
+     *
+     * @return A [Pair] where the first element is the featured [Movie] (nullable) and the second
+     * element is a [List] of [Movie] objects. Returns a Pair with (null, emptyList) if an error occurs.
+     */
     suspend fun fetchHomeData(): Pair<Movie?, List<Movie>> = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.connect(baseUrl).userAgent(userAgent).cookies(cookies).timeout(10000).get()
@@ -49,6 +72,13 @@ class MovieRepository {
         return@withContext Pair(null, emptyList())
     }
 
+    /**
+     * Fetches the episodes of a series from its URL.
+     *
+     * @param seriesUrl The URL of the series page.
+     * @return A [Map] where the key is the season title (e.g., "Season 1") and the value is a
+     * [List] of [Movie] objects representing the episodes. Returns an empty map on error.
+     */
     suspend fun fetchEpisodes(seriesUrl: String): Map<String, List<Movie>> = withContext(Dispatchers.IO) {
         val seasonsMap = mutableMapOf<String, MutableList<Movie>>()
 
@@ -80,6 +110,15 @@ class MovieRepository {
         return@withContext seasonsMap
     }
 
+    /**
+     * Extracts available video server URLs for a specific episode.
+     *
+     * This method parses the episode page to find embedded video players and validates them against
+     * a list of known video hosts. It also handles redirects for certain hosts.
+     *
+     * @param episodeUrl The URL of the episode page.
+     * @return An [ArrayList] of strings containing the validated video server URLs.
+     */
     suspend fun extractAllServers(episodeUrl: String): ArrayList<String> = withContext(Dispatchers.IO) {
         val serverList = ArrayList<String>()
         // List of hosts that potentially contain the video stream (updated list)
@@ -117,6 +156,12 @@ class MovieRepository {
         return@withContext serverList
     }
 
+    /**
+     * Parses a Jsoup Document to extract a list of movies.
+     *
+     * @param doc The Jsoup [Document] representing the HTML page.
+     * @return A [List] of [Movie] objects extracted from the document.
+     */
     private fun parseMovies(doc: Document): List<Movie> {
         val movieList = mutableListOf<Movie>()
         val items = doc.select("div.ml-item")
@@ -130,6 +175,12 @@ class MovieRepository {
         return movieList
     }
 
+    /**
+     * Resolves the final URL after following redirects.
+     *
+     * @param url The initial URL.
+     * @return The resolved URL as a String, or the original URL if resolution fails.
+     */
     private fun resolveRedirect(url: String): String {
         return try {
             val request = Request.Builder().url(url).header("User-Agent", userAgent).header("Referer", baseUrl).build()

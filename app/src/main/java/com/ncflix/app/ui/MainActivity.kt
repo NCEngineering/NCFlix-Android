@@ -22,12 +22,29 @@ import com.ncflix.app.model.Movie
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
+/**
+ * The main entry point of the application.
+ *
+ * This activity displays the home screen, which typically includes a featured "hero" movie,
+ * a list of trending movies, and a search interface. It handles navigation to the [PlayerActivity]
+ * for movies or [EpisodeActivity] for series.
+ */
 class MainActivity : AppCompatActivity() {
 
     private val repository = MovieRepository()
     private lateinit var adapter: MovieAdapter
     private var searchJob: Job? = null
 
+    /**
+     * Called when the activity is starting.
+     *
+     * Initializes the UI components including the hero section, movie list RecyclerView,
+     * and SearchView. It also initiates the data fetch for the home screen.
+     *
+     * @param savedInstanceState If the activity is being re-initialized after
+     *     previously being shut down then this Bundle contains the data it most
+     *     recently supplied in [onSaveInstanceState].  <b><i>Note: Otherwise it is null.</i></b>
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -69,6 +86,17 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    /**
+     * Performs a search for movies based on the user's query.
+     *
+     * This method cancels any existing search job and starts a new one to fetch results
+     * from the repository. It updates the UI to hide the hero section and display the results.
+     *
+     * @param query The search string entered by the user.
+     * @param heroGroup The view group containing the hero section elements (to be hidden).
+     * @param header The TextView used to display the search status.
+     * @param rv The RecyclerView to populate with search results.
+     */
     private fun performSearch(query: String, heroGroup: Group, header: TextView, rv: RecyclerView) {
         searchJob?.cancel()
         searchJob = lifecycleScope.launch {
@@ -87,6 +115,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Handles the navigation when a movie or series is selected.
+     *
+     * It checks the URL of the selected item to determine if it is a series or a movie/episode.
+     * If it's a series, it navigates to [EpisodeActivity]. Otherwise, it navigates to [PlayerActivity].
+     *
+     * @param movie The [Movie] object representing the selected item.
+     */
     private fun openPlayer(movie: Movie) {
         Log.d("NC-FLIX", "Opening: ${movie.title} | Link: ${movie.pageLink}")
 
