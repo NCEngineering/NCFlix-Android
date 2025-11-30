@@ -75,6 +75,131 @@ class MovieRepository {
         }
     }
 
+    suspend fun searchMovies(query: String): Resource<List<Movie>> = withContext(Dispatchers.IO) {
+        try {
+            val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+            val url = "${Constants.BASE_URL}/?s=$encodedQuery"
+            
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", Constants.USER_AGENT)
+                .header("Cookie", getCookieHeader())
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
+
+            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
+            val doc = Jsoup.parse(html, url)
+
+            val movieList = parseMovies(doc)
+            if (movieList.isEmpty()) {
+                return@withContext Resource.Error("No results found")
+            }
+            return@withContext Resource.Success(movieList)
+
+        } catch (e: Exception) {
+            return@withContext Resource.Error(e.message ?: "Network Error", e)
+        }
+    }
+
+    suspend fun fetchLatestSeries(): Resource<List<Movie>> = fetchList(Constants.BASE_URL + "/series/")
+    suspend fun fetchLatestMovies(): Resource<List<Movie>> = fetchList(Constants.BASE_URL + "/movies/")
+    suspend fun fetchMostViewed(): Resource<List<Movie>> = fetchList(Constants.BASE_URL + "/most-viewed/")
+
+    suspend fun fetchTop10Malaysia(): Resource<List<Movie>> = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://www.imdb.com/search/title/?country_of_origin=MY"
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", Constants.USER_AGENT)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val html = response.body?.string() ?: throw Exception("Empty response")
+            val doc = Jsoup.parse(html, url)
+
+            val items = doc.select("li.ipc-metadata-list-summary-item")
+            val movies = mutableListOf<Movie>()
+
+            for (item in items) {
+                val titleElement = item.selectFirst("h3.ipc-title__text")
+                val imgElement = item.selectFirst("img.ipc-image")
+                
+                // Helper to find year: Find all spans, look for 4 digits
+                val spans = item.select("span")
+                var year = ""
+                for (span in spans) {
+                    if (span.text().matches(Regex("^\\d{4}$"))) {
+                        year = span.text()
+                        break
+                    }
+                }
+
+                if (titleElement != null) {
+                    val title = titleElement.text().replace(Regex("^\\d+\\.\\s+"), "") // Remove "1. " prefix
+                    // Use a higher res image if available in srcset, otherwise src
+                    val poster = imgElement?.attr("src") ?: ""
+                    // Improve poster resolution hack (IMDb thumbnails are small)
+                    val highResPoster = poster.replace(Regex("UX\\d+"), "UX600").replace(Regex("CR\\d+,\\d+,\\d+,\\d+"), "")
+
+                    movies.add(
+                        Movie(
+                            title = title,
+                            posterUrl = highResPoster,
+                            pageLink = "search:$title",
+                            description = if (year.isNotEmpty()) "Released: $year" else "Top Movie"
+                        )
+                    )
+                }
+            }
+
+            if (movies.isNotEmpty()) {
+                return@withContext Resource.Success(movies)
+            }
+            throw Exception("Scraping failed or no items")
+
+        } catch (e: Exception) {
+            // Fallback list
+            val localTop10 = listOf(
+                "Mat Kilau", "Polis Evo 3", "Munafik 2", "Mechamato Movie",
+                "Hantu Kak Limah", "Ejen Ali: The Movie", "Abang Long Fadil 3",
+                "Paskal", "BoBoiBoy Movie 2", "Sheriff: Narko Integriti"
+            )
+            
+            val movies = localTop10.map { title ->
+                Movie(
+                    title = title, 
+                    posterUrl = "", 
+                    pageLink = "search:$title",
+                    description = "Trending in Malaysia"
+                )
+            }
+            return@withContext Resource.Success(movies)
+        }
+    }
+
+    private suspend fun fetchList(url: String): Resource<List<Movie>> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", Constants.USER_AGENT)
+                .header("Cookie", getCookieHeader())
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
+
+            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
+            val doc = Jsoup.parse(html, url)
+
+            val list = parseMovies(doc)
+            return@withContext Resource.Success(list)
+        } catch (e: Exception) {
+            return@withContext Resource.Error(e.message ?: "Network Error", e)
+        }
+    }
+
     // FIX: Corrected "withWithContext" to "withContext"
     suspend fun fetchEpisodes(seriesUrl: String): Resource<Map<String, List<Movie>>> = withContext(Dispatchers.IO) {
         try {
@@ -113,7 +238,11 @@ class MovieRepository {
             }
 
             if (seasonsMap.isEmpty()) {
-                return@withContext Resource.Error("No episodes found on this page")
+                // It might be a movie (no seasons found). Return as a single item.
+                val title = doc.selectFirst("h1.entry-title")?.text() ?: "Movie"
+                val singleMovie = Movie(title, "", seriesUrl, seasonTitle = "Movie")
+                seasonsMap["Movie"] = mutableListOf(singleMovie)
+                return@withContext Resource.Success(seasonsMap)
             }
             return@withContext Resource.Success(seasonsMap)
 
