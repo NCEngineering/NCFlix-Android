@@ -43,37 +43,114 @@ class MainActivity : AppCompatActivity() {
         btnPlayHero = findViewById(R.id.btnPlayHero)
         rvTrending = findViewById(R.id.rvTrending)
         loadingIndicator = findViewById(R.id.loadingIndicator)
+        val searchView = findViewById<androidx.appcompat.widget.SearchView>(R.id.searchView)
+        val groupHero = findViewById<View>(R.id.groupHero)
+        val lblListHeader = findViewById<TextView>(R.id.lblListHeader)
+
+        // Setup Search Listener
+        searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                query?.let {
+                    if (it.isNotBlank()) viewModel.searchMovies(it)
+                }
+                searchView.clearFocus()
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                if (newText.isNullOrBlank()) {
+                    viewModel.clearSearch()
+                }
+                return false
+            }
+        })
+
+        // Handle Search Close
+        searchView.setOnCloseListener {
+            viewModel.clearSearch()
+            false
+        }
 
         // Observe State
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.homeState.collect { state ->
-                    when (state) {
-                        is Resource.Loading -> {
-                            loadingIndicator.visibility = View.VISIBLE
-                            rvTrending.visibility = View.GONE
-                        }
-                        is Resource.Success -> {
-                            loadingIndicator.visibility = View.GONE
-                            rvTrending.visibility = View.VISIBLE
-                            
-                            val (heroMovie, trendingList) = state.data
-                            
-                            imgHero.load(heroMovie.posterUrl)
-                            txtHeroTitle.text = heroMovie.title
-                            btnPlayHero.setOnClickListener { openPlayer(heroMovie) }
-
-                            val adapter = MovieAdapter(trendingList) { selectedMovie ->
-                                openPlayer(selectedMovie)
-                            }
-                            rvTrending.adapter = adapter
-                        }
-                        is Resource.Error -> {
-                            loadingIndicator.visibility = View.GONE
-                            Toast.makeText(this@MainActivity, state.message, Toast.LENGTH_LONG).show()
+                launch {
+                    viewModel.homeState.collect { state ->
+                        // Only show home state if search is not active (searchState is null)
+                        if (viewModel.searchState.value == null) {
+                            updateHomeUI(state, groupHero, lblListHeader)
                         }
                     }
                 }
+
+                launch {
+                    viewModel.searchState.collect { state ->
+                        if (state != null) {
+                            // Search Mode
+                            groupHero.visibility = View.GONE
+                            lblListHeader.text = getString(R.string.search_hint) // Or "Search Results"
+
+                            when (state) {
+                                is Resource.Loading -> {
+                                    loadingIndicator.visibility = View.VISIBLE
+                                    rvTrending.visibility = View.GONE
+                                }
+                                is Resource.Success -> {
+                                    loadingIndicator.visibility = View.GONE
+                                    rvTrending.visibility = View.VISIBLE
+
+                                    val adapter = MovieAdapter(state.data) { selectedMovie ->
+                                        openPlayer(selectedMovie)
+                                    }
+                                    rvTrending.adapter = adapter
+
+                                    if (state.data.isEmpty()) {
+                                        Toast.makeText(this@MainActivity, "No results found", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                is Resource.Error -> {
+                                    loadingIndicator.visibility = View.GONE
+                                    Toast.makeText(this@MainActivity, state.message, Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        } else {
+                            // Home Mode (Re-apply home state if available)
+                             val homeState = viewModel.homeState.value
+                             updateHomeUI(homeState, groupHero, lblListHeader)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateHomeUI(state: Resource<Pair<Movie, List<Movie>>>, groupHero: View, lblListHeader: TextView) {
+        when (state) {
+            is Resource.Loading -> {
+                loadingIndicator.visibility = View.VISIBLE
+                rvTrending.visibility = View.GONE
+                groupHero.visibility = View.GONE
+            }
+            is Resource.Success -> {
+                loadingIndicator.visibility = View.GONE
+                rvTrending.visibility = View.VISIBLE
+                groupHero.visibility = View.VISIBLE
+                lblListHeader.text = getString(R.string.trending_now)
+
+                val (heroMovie, trendingList) = state.data
+
+                imgHero.load(heroMovie.posterUrl)
+                txtHeroTitle.text = heroMovie.title
+                btnPlayHero.setOnClickListener { openPlayer(heroMovie) }
+
+                val adapter = MovieAdapter(trendingList) { selectedMovie ->
+                    openPlayer(selectedMovie)
+                }
+                rvTrending.adapter = adapter
+            }
+            is Resource.Error -> {
+                loadingIndicator.visibility = View.GONE
+                // Don't show toast for home error if we are searching (handled by flow checks but safety first)
             }
         }
     }
