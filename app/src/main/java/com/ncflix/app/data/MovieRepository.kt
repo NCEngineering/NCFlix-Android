@@ -76,7 +76,7 @@ class MovieRepository {
     }
 
     // FIX: Corrected "withWithContext" to "withContext"
-    suspend fun fetchEpisodes(seriesUrl: String): Resource<Map<String, List<Movie>>> = withContext(Dispatchers.IO) {
+    suspend fun getEpisodes(seriesUrl: String): Resource<Map<String, List<Movie>>> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(seriesUrl)
