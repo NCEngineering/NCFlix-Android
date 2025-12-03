@@ -17,8 +17,26 @@ class MainViewModel : ViewModel() {
     private val _homeState = MutableStateFlow<Resource<Pair<Movie, List<Movie>>>>(Resource.Loading)
     val homeState: StateFlow<Resource<Pair<Movie, List<Movie>>>> = _homeState.asStateFlow()
 
+    private val _searchState = MutableStateFlow<Resource<List<Movie>>?>(null)
+    val searchState: StateFlow<Resource<List<Movie>>?> = _searchState.asStateFlow()
+
     init {
         loadHomeData()
+    }
+
+    fun searchMovies(query: String) {
+        if (query.isBlank()) {
+            _searchState.value = null
+            return
+        }
+        viewModelScope.launch {
+            _searchState.value = Resource.Loading
+            _searchState.value = repository.searchMovies(query)
+        }
+    }
+
+    fun clearSearch() {
+        _searchState.value = null
     }
 
     fun loadHomeData() {
