@@ -76,7 +76,7 @@ class MovieRepository {
     }
 
     // FIX: Corrected "withWithContext" to "withContext"
-    suspend fun fetchEpisodes(seriesUrl: String): Resource<Map<String, List<Movie>>> = withContext(Dispatchers.IO) {
+    suspend fun getEpisodes(seriesUrl: String): Resource<Map<String, List<Movie>>> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(seriesUrl)
@@ -203,5 +203,53 @@ class MovieRepository {
             }
         }
         return movieList
+    }
+
+    suspend fun searchMovies(query: String): Resource<List<Movie>> = withContext(Dispatchers.IO) {
+        try {
+            val searchUrl = "${Constants.BASE_URL}/?s=${Uri.encode(query)}"
+            val request = Request.Builder()
+                .url(searchUrl)
+                .header("User-Agent", Constants.USER_AGENT)
+                .header("Cookie", getCookieHeader())
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext Resource.Error("Search failed: ${response.code}")
+
+            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
+            val doc = Jsoup.parse(html, searchUrl)
+
+            // Search results also use "div.ml-item"
+            val movieList = mutableListOf<Movie>()
+            var items = doc.select("div.ml-item")
+            // Fallback if structure is different
+            if (items.isEmpty()) {
+                items = doc.select("div.result-item")
+            }
+
+            for (item in items) {
+                val linkTag = item.selectFirst("a.ml-mask") ?: item.selectFirst("a")
+                val imgTag = item.selectFirst("img")
+
+                if (linkTag != null && imgTag != null) {
+                    var title = linkTag.attr("oldtitle")
+                    if (title.isEmpty()) {
+                        title = item.selectFirst("h2")?.text() ?: ""
+                    }
+
+                    if (title.isNotEmpty()) {
+                         val link = linkTag.attr("abs:href")
+                         val poster = imgTag.attr("data-original").ifEmpty { imgTag.attr("src") }
+                         movieList.add(Movie(title, poster, link))
+                    }
+                }
+            }
+
+            return@withContext Resource.Success(movieList)
+
+        } catch (e: Exception) {
+            return@withContext Resource.Error(e.message ?: "Search Error", e)
+        }
     }
 }

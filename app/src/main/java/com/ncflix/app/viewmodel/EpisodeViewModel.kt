@@ -19,7 +19,7 @@ class EpisodeViewModel : ViewModel() {
     fun loadEpisodes(url: String) {
         viewModelScope.launch {
             _episodesState.value = Resource.Loading
-            _episodesState.value = repository.fetchEpisodes(url)
+            _episodesState.value = repository.getEpisodes(url)
         }
     }
 }
