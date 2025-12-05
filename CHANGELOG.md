@@ -10,3 +10,6 @@
 - Unified User-Agent configuration to use `Constants.USER_AGENT` consistently.
 - Fixed application crash/failure when using the search feature by implementing proper search logic and UI handling.
 - Refactored `fetchEpisodes` to `getEpisodes` to resolve conflicting overloads compilation error.
+
+### Added
+- Added `DAILY_CHECKLIST.md` for daily maintenance and verification tasks.
