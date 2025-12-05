@@ -97,7 +97,16 @@ class EpisodeActivity : AppCompatActivity() {
             spinnerSeason.visibility = View.GONE
             val singleSeasonName = seasonNames.firstOrNull()
             if (singleSeasonName != null) {
-                 updateEpisodeList(singleSeasonName)
+                val episodes = allSeasonsData[singleSeasonName] ?: emptyList()
+                if (episodes.size == 1) {
+                    val episode = episodes[0]
+                    val intent = Intent(this, PlayerActivity::class.java)
+                    intent.putExtra("EPISODE_URL", episode.pageLink)
+                    startActivity(intent)
+                    finish()
+                    return
+                }
+                updateEpisodeList(singleSeasonName)
             }
         }
     }

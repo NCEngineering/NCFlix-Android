@@ -188,8 +188,6 @@ class PlayerActivity : AppCompatActivity() {
                 Handler(Looper.getMainLooper()).postDelayed({
                     if (!isVideoPlaying) injectErrorDetector()
                 }, 7000)
-
-                injectResumeDetector()
             }
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
@@ -293,10 +291,7 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
         }
-        @JavascriptInterface
-        fun onResumeDetected(time: String) {
-            runOnUiThread { showResumeDialog(time) }
-        }
+
         @JavascriptInterface
         fun onVideoStarted() {
             runOnUiThread {
@@ -322,22 +317,6 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     // --- Native UI Handlers ---
-
-    private fun showResumeDialog(time: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Resume Playing?")
-            .setMessage("Left off at $time. Resume?")
-            .setCancelable(false)
-            .setPositiveButton("Yes") { _, _ ->
-                webView.evaluateJavascript("document.querySelector('#yesplease').click();", null)
-                Handler(Looper.getMainLooper()).postDelayed({ injectAutoPlay() }, 1000)
-            }
-            .setNegativeButton("No") { _, _ ->
-                webView.evaluateJavascript("document.querySelector('#no_thanks').click();", null)
-                Handler(Looper.getMainLooper()).postDelayed({ injectAutoPlay() }, 1000)
-            }
-            .show()
-    }
 
     private fun injectErrorDetector() {
         val js = """
@@ -368,43 +347,23 @@ class PlayerActivity : AppCompatActivity() {
         webView.evaluateJavascript(js, null)
     }
 
-    private fun injectResumeDetector() {
-        val hideResumePopupCss = "#checkresume_div_n { display: none !important; }"
-        val injectHideJs = "var style = document.createElement('style'); style.innerHTML = '$hideResumePopupCss'; document.head.appendChild(style);"
-        webView.evaluateJavascript(injectHideJs, null)
-
-        val js = """
-            (function() {
-                var checkResume = setInterval(function() {
-                    var resumeDiv = document.querySelector('#checkresume_div_n');
-                    if (resumeDiv) {
-                        var timeSpan = document.querySelector('#lefttime');
-                        var time = timeSpan ? timeSpan.innerText : "Unknown";
-                        window.Android.onResumeDetected(time);
-                        clearInterval(checkResume);
-                    }
-                }, 500);
-                setTimeout(function(){ clearInterval(checkResume); }, 5000); 
-            })();
-        """.trimIndent().replace("\n", " ")
-        webView.evaluateJavascript(js, null)
-    }
-
     private fun injectCSS() {
         val css = """
             #loading,.loading,.ad-container,.popup,.banner,#ads,.jw-logo,.watermark,.eruda-container{display:none !important;}
             body, html { background-color: black !important; margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden !important; }
             video { width: 100% !important; height: 100vh !important; object-fit: contain; }
             
-            /* HIDE ALL CONTROLS FOR GESTURE CONTROL (Scrubbing, Play/Pause via taps) */
-            .vjs-control-bar, .jw-controlbar { 
-                opacity: 0 !important; 
-                pointer-events: none !important; 
-                display: none !important;
-            } 
+            /* VideoJS: Hide all controls except progress */
+            .vjs-control-bar > *:not(.vjs-progress-control) { display: none !important; }
+            .vjs-play-control, .vjs-volume-panel, .vjs-fullscreen-control, .vjs-subs-caps-button { display: none !important; }
+            .vjs-progress-control { display: flex !important; opacity: 1 !important; pointer-events: auto !important; }
+            
+            /* JWPlayer: Hide buttons, keep time slider */
+            .jw-controlbar-left-group, .jw-controlbar-right-group { display: none !important; }
+            .jw-icon-playback, .jw-icon-volume, .jw-icon-fullscreen, .jw-icon-settings, .jw-icon-cc { display: none !important; }
+            .jw-controlbar-center-group { display: flex !important; opacity: 1 !important; pointer-events: auto !important; }
             
             .vjs-big-play-button { display: none !important; }
-            
             #checkresume_div_n { display: none !important; }
         """.trimIndent().replace("\n", " ") + " " + AdBlocker.getCssRules()
         
