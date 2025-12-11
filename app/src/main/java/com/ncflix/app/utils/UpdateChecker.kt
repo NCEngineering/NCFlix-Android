@@ -7,7 +7,7 @@ import okhttp3.Request
 import org.json.JSONObject
 
 object UpdateChecker {
-    private const val REPO_OWNER = "BOMBTIMECS-Co"
+    private const val REPO_OWNER = "NCEngineering"
     private const val REPO_NAME = "NCFlix-Android"
     private const val GITHUB_API_URL = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/latest"
 
@@ -36,10 +36,7 @@ object UpdateChecker {
             val latestVersionTag = json.optString("tag_name", "").removePrefix("v")
             val downloadUrl = json.optString("html_url", "")
 
-            if (latestVersionTag.isNotEmpty() && latestVersionTag != currentVersion) {
-                // Simple string comparison might not be enough for semantic versioning (1.10 vs 1.2), 
-                // but for now assume standard string inequality implies a difference worth checking.
-                // Ideally use a SemVer parser.
+            if (isNewerVersion(currentVersion, latestVersionTag)) {
                 return@withContext UpdateResult.Available(latestVersionTag, downloadUrl)
             } else {
                 return@withContext UpdateResult.NoUpdate
@@ -48,6 +45,25 @@ object UpdateChecker {
         } catch (e: Exception) {
             return@withContext UpdateResult.Error(e.message ?: "Unknown error")
         }
+    }
+    
+    private fun isNewerVersion(current: String, latest: String): Boolean {
+        try {
+            val currentParts = current.split(".").map { it.toInt() }
+            val latestParts = latest.split(".").map { it.toInt() }
+            val length = maxOf(currentParts.size, latestParts.size)
+
+            for (i in 0 until length) {
+                val c = if (i < currentParts.size) currentParts[i] else 0
+                val l = if (i < latestParts.size) latestParts[i] else 0
+                if (l > c) return true
+                if (l < c) return false
+            }
+        } catch (e: Exception) {
+            // Fallback to simple string check if parsing fails
+             return latest != current
+        }
+        return false
     }
 
     sealed class UpdateResult {

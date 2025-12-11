@@ -17,11 +17,24 @@ class MainViewModel : ViewModel() {
     private val _homeState = MutableStateFlow<Resource<Pair<Movie, List<Movie>>>>(Resource.Loading)
     val homeState: StateFlow<Resource<Pair<Movie, List<Movie>>>> = _homeState.asStateFlow()
 
+    private val _seriesState = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
+    val seriesState: StateFlow<Resource<List<Movie>>> = _seriesState.asStateFlow()
+
+    private val _moviesState = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
+    val moviesState: StateFlow<Resource<List<Movie>>> = _moviesState.asStateFlow()
+
+    private val _mostViewedState = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
+    val mostViewedState: StateFlow<Resource<List<Movie>>> = _mostViewedState.asStateFlow()
+
+    private val _malaysiaState = MutableStateFlow<Resource<List<Movie>>>(Resource.Loading)
+    val malaysiaState: StateFlow<Resource<List<Movie>>> = _malaysiaState.asStateFlow()
+
     private val _searchState = MutableStateFlow<Resource<List<Movie>>?>(null)
     val searchState: StateFlow<Resource<List<Movie>>?> = _searchState.asStateFlow()
 
     init {
         loadHomeData()
+        loadOtherSections()
     }
 
     fun searchMovies(query: String) {
@@ -37,6 +50,13 @@ class MainViewModel : ViewModel() {
 
     fun clearSearch() {
         _searchState.value = null
+    }
+
+    private fun loadOtherSections() {
+        viewModelScope.launch { _seriesState.value = repository.fetchLatestSeries() }
+        viewModelScope.launch { _moviesState.value = repository.fetchLatestMovies() }
+        viewModelScope.launch { _mostViewedState.value = repository.fetchMostViewed() }
+        viewModelScope.launch { _malaysiaState.value = repository.fetchTop10Malaysia() }
     }
 
     fun loadHomeData() {

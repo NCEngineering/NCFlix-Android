@@ -17,16 +17,10 @@ class MovieRepository {
 
     private val client = NetworkClient.client
 
-    private fun getCookieHeader(): String {
-        return Constants.COOKIES.entries.joinToString("; ") { "${it.key}=${it.value}" }
-    }
-
     suspend fun fetchHomeData(): Resource<Pair<Movie?, List<Movie>>> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(Constants.BASE_URL)
-                .header("User-Agent", Constants.USER_AGENT)
-                .header("Cookie", getCookieHeader())
                 .build()
 
             val response = client.newCall(request).execute()
@@ -75,33 +69,7 @@ class MovieRepository {
         }
     }
 
-    suspend fun searchMovies(query: String): Resource<List<Movie>> = withContext(Dispatchers.IO) {
-        try {
-            val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
-            val url = "${Constants.BASE_URL}/?s=$encodedQuery"
-            
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", Constants.USER_AGENT)
-                .header("Cookie", getCookieHeader())
-                .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
-
-            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
-            val doc = Jsoup.parse(html, url)
-
-            val movieList = parseMovies(doc)
-            if (movieList.isEmpty()) {
-                return@withContext Resource.Error("No results found")
-            }
-            return@withContext Resource.Success(movieList)
-
-        } catch (e: Exception) {
-            return@withContext Resource.Error(e.message ?: "Network Error", e)
-        }
-    }
 
     suspend fun fetchLatestSeries(): Resource<List<Movie>> = fetchList(Constants.BASE_URL + "/series/")
     suspend fun fetchLatestMovies(): Resource<List<Movie>> = fetchList(Constants.BASE_URL + "/movies/")
@@ -112,7 +80,6 @@ class MovieRepository {
             val url = "https://www.imdb.com/search/title/?country_of_origin=MY"
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", Constants.USER_AGENT)
                 .build()
 
             val response = client.newCall(request).execute()
@@ -183,8 +150,6 @@ class MovieRepository {
         try {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", Constants.USER_AGENT)
-                .header("Cookie", getCookieHeader())
                 .build()
 
             val response = client.newCall(request).execute()
@@ -205,8 +170,6 @@ class MovieRepository {
         try {
             val request = Request.Builder()
                 .url(seriesUrl)
-                .header("User-Agent", Constants.USER_AGENT)
-                .header("Cookie", getCookieHeader())
                 .build()
 
             val response = client.newCall(request).execute()
@@ -258,8 +221,6 @@ class MovieRepository {
         try {
             val requestPage = Request.Builder()
                 .url(episodeUrl)
-                .header("User-Agent", Constants.USER_AGENT)
-                .header("Cookie", getCookieHeader())
                 .header("Referer", Constants.BASE_URL)
                 .build()
 
@@ -315,7 +276,6 @@ class MovieRepository {
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", Constants.USER_AGENT)
                 .build()
             client.newCall(request).execute().use { it.request.url.toString() }
         } catch (e: Exception) { url }
@@ -339,8 +299,6 @@ class MovieRepository {
             val searchUrl = "${Constants.BASE_URL}/?s=${Uri.encode(query)}"
             val request = Request.Builder()
                 .url(searchUrl)
-                .header("User-Agent", Constants.USER_AGENT)
-                .header("Cookie", getCookieHeader())
                 .build()
 
             val response = client.newCall(request).execute()

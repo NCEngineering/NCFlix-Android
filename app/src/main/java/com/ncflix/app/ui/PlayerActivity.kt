@@ -1,12 +1,12 @@
 package com.ncflix.app.ui
 
+import android.content.Intent
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.Message
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -44,11 +44,14 @@ class PlayerActivity : AppCompatActivity() {
 
     private val viewModel: PlayerViewModel by viewModels()
 
-    // Views (Matching the WebView layout from your previous file dump)
+    // Views
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private lateinit var txtStatus: TextView
     private lateinit var txtGestureFeedback: TextView
+    private lateinit var panelVideoDetected: View
+    private lateinit var btnPlayNative: android.widget.Button
+    private lateinit var btnCopyLink: android.widget.Button
 
     private lateinit var gestureDetector: GestureDetectorCompat
 
@@ -57,6 +60,7 @@ class PlayerActivity : AppCompatActivity() {
     private var currentServerIndex = 0
     private var currentHost: String = ""
     private var isVideoPlaying = false
+    private var capturedVideoUrl: String? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,6 +76,28 @@ class PlayerActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         txtStatus = findViewById(R.id.txtStatus)
         txtGestureFeedback = findViewById(R.id.txtGestureFeedback)
+        
+        // New Panel UI
+        panelVideoDetected = findViewById(R.id.panelVideoDetected)
+        btnPlayNative = findViewById(R.id.btnPlayNative)
+        btnCopyLink = findViewById(R.id.btnCopyLink)
+
+        btnPlayNative.setOnClickListener {
+            capturedVideoUrl?.let { url ->
+                val intent = Intent(this, NativePlayerActivity::class.java)
+                intent.putExtra("VIDEO_URL", url)
+                startActivity(intent)
+            }
+        }
+
+        btnCopyLink.setOnClickListener {
+             capturedVideoUrl?.let { url ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("Video URL", url)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+             }
+        }
 
         setupWebPlayer()
         setupGestures()
@@ -192,6 +218,26 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                 val url = request?.url.toString()
+                
+                // Sniffer Logic
+                if (url != null) {
+                    val lowerUrl = url.lowercase()
+                    if (lowerUrl.contains(".mp4") || lowerUrl.contains(".m3u8") || lowerUrl.contains(".mkv") || lowerUrl.contains(".ts")) {
+                         // Filter out small segments if possible, but for now capture all potential streams
+                         if (!lowerUrl.contains("favicon") && !lowerUrl.contains(".png")) {
+                             if (capturedVideoUrl != url) {
+                                 capturedVideoUrl = url
+                                 runOnUiThread {
+                                     if (panelVideoDetected.visibility != View.VISIBLE) {
+                                         panelVideoDetected.visibility = View.VISIBLE
+                                         Toast.makeText(this@PlayerActivity, "Video Stream Captured!", Toast.LENGTH_SHORT).show()
+                                     }
+                                 }
+                             }
+                         }
+                    }
+                }
+
                 if (AdBlocker.isAd(url)) {
                     println("NC-FLIX: Res Blocked (Ad) -> $url")
                     return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))

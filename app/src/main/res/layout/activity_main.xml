@@ -31,24 +31,32 @@
 
             <!-- Gradient Overlay for Text Readability -->
             <View
+                android:id="@+id/viewGradient"
                 android:layout_width="match_parent"
                 android:layout_height="550dp"
                 android:background="@drawable/gradient_background"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <!-- TOP BAR (Overlay) -->
-            <TextView
+            <ImageView
                 android:id="@+id/txtLogo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="48dp"
-                android:text="N"
-                android:textColor="#E50914"
-                android:textSize="40sp"
-                android:textStyle="bold"
+                android:src="@mipmap/ic_launcher"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/txtVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="v1.0.0"
+                android:textColor="#80FFFFFF"
+                android:textSize="10sp"
+                app:layout_constraintStart_toStartOf="@id/txtLogo"
+                app:layout_constraintTop_toBottomOf="@id/txtLogo" />
             
              <TextView
                 android:layout_width="wrap_content"
@@ -58,7 +66,8 @@
                 android:textSize="14sp"
                 android:layout_marginStart="24dp"
                 app:layout_constraintStart_toEndOf="@id/txtLogo"
-                app:layout_constraintBaseline_toBaselineOf="@id/txtLogo"/>
+                app:layout_constraintTop_toTopOf="@id/txtLogo"
+                app:layout_constraintBottom_toBottomOf="@id/txtLogo"/>
                 
              <TextView
                 android:layout_width="wrap_content"
@@ -68,8 +77,10 @@
                 android:textSize="14sp"
                 android:layout_marginStart="24dp"
                 app:layout_constraintStart_toEndOf="@id/txtLogo"
-                android:translationX="70dp"
-                app:layout_constraintBaseline_toBaselineOf="@id/txtLogo"/>   
+                app:layout_constraintTop_toTopOf="@id/txtLogo"
+                app:layout_constraintBottom_toBottomOf="@id/txtLogo"
+                app:layout_constraintVertical_bias="0.5"
+                android:translationX="70dp" />   
 
             <ImageView
                 android:id="@+id/btnUpdateTop"
@@ -311,6 +322,12 @@
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                 app:layout_constraintTop_toBottomOf="@+id/lblMalaysia"
                 tools:listitem="@layout/item_movie" />
+
+            <androidx.constraintlayout.widget.Group
+                android:id="@+id/groupHero"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:constraint_referenced_ids="imgHero,viewGradient,txtHeroTitle,txtHeroGenre,layoutHeroButtons" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
