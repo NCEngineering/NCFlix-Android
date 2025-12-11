@@ -36,3 +36,7 @@
 
 ### Changed
 - Updated `DAILY_CHECKLIST.md` to reflect successful verification on 2025-12-09.
+## [Unreleased]
+- Performance: Optimized `AdBlocker` to reduce object allocation and redundant string processing on every network request.
+  - Pre-computed lowercase ad hosts set to avoid (N)$ lowercasing in the loop.
+  - Added `isAd(HttpUrl)` overload to avoid parsing `URI` objects from strings in `AdBlockInterceptor`, utilizing OkHttp's already-parsed `HttpUrl`.

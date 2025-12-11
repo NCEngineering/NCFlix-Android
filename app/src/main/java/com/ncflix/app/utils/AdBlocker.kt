@@ -1,5 +1,6 @@
 package com.ncflix.app.utils
 
+import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -11,9 +12,9 @@ object AdBlocker {
         // Big Tech
         "googleads", "doubleclick", "analytics", "facebook.com", "connect.facebook.net",
         "googletagservices", "adservice.google", "clients1.google",
-        
+
         // Streaming/Popups/Redirects
-        "adsco.re", "popads", "popcash", "propellerads", "adsterra", "revenuehits", 
+        "adsco.re", "popads", "popcash", "propellerads", "adsterra", "revenuehits",
         "mc.yandex", "creativecdn", "scorecardresearch", "quantserve", "adroll",
         "taboola", "outbrain", "zedo", "adclick", "trackclick", "adsystem",
         "histats", "statcounter", "bidgear", "exo-click", "juicyads",
@@ -25,11 +26,16 @@ object AdBlocker {
         "jads", "juicyads", "exoclick", "trafficjunky", "ero-advertising",
         "tsyndicate", "plugrush", "trafficfactory", "adxpansion",
         "bet365", "1xbet", "casino", "gambling"
-    )
+    ).map { it.lowercase(Locale.ROOT) }.toSet()
 
     fun isAd(url: String): Boolean {
-        val host = try { java.net.URI(url).host ?: "" } catch (e: Exception) { url }
-        return AD_HOSTS.any { host.lowercase(Locale.ROOT).contains(it.lowercase(Locale.ROOT)) }
+        val host = try { java.net.URI(url).host?.lowercase(Locale.ROOT) ?: "" } catch (e: Exception) { url.lowercase(Locale.ROOT) }
+        return AD_HOSTS.any { host.contains(it) }
+    }
+
+    fun isAd(url: HttpUrl): Boolean {
+        val host = url.host // HttpUrl host is already lowercased and punycode decoded
+        return AD_HOSTS.any { host.contains(it) }
     }
 
     /**
@@ -113,7 +119,7 @@ object AdBlocker {
 class AdBlockInterceptor : Interceptor {
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
-        val url = chain.request().url.toString()
+        val url = chain.request().url
 
         if (AdBlocker.isAd(url)) {
             throw IOException("Blocked Ad/Tracker: $url")
