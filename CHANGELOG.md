@@ -15,6 +15,7 @@
 - Corrected XML syntax error in `activity_main.xml`.
 - Enabled search functionality on `MainActivity` by adding click listener to the search icon.
 - Fixed nullability issue for `pInfo.versionName` in `MainActivity.kt`.
+- Improved IMDb poster resolution logic in `MovieRepository.kt` to be more robust using regex.
 
 ## [Unreleased]
 
