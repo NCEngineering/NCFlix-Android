@@ -5,8 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -35,7 +33,10 @@ import com.ncflix.app.R
 import com.ncflix.app.utils.Resource
 import com.ncflix.app.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.io.ByteArrayInputStream
+import java.lang.ref.WeakReference
 import com.ncflix.app.utils.AdBlocker
 import com.ncflix.app.utils.Constants
 import androidx.activity.viewModels
@@ -204,16 +205,22 @@ class PlayerActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
-                Handler(Looper.getMainLooper()).postDelayed({
-                    injectCSS()
-                    injectAutoPlay()
-                    injectAdBlockOverrides()
-                }, 1000)
+                this@PlayerActivity.lifecycleScope.launch {
+                    delay(1000)
+                    if (isActive) {
+                        injectCSS()
+                        injectAutoPlay()
+                        injectAdBlockOverrides()
+                    }
+                }
 
                 // Delayed Error Detection
-                Handler(Looper.getMainLooper()).postDelayed({
-                    if (!isVideoPlaying) injectErrorDetector()
-                }, 7000)
+                this@PlayerActivity.lifecycleScope.launch {
+                    delay(7000)
+                    if (isActive && !isVideoPlaying) {
+                        injectErrorDetector()
+                    }
+                }
             }
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
@@ -326,37 +333,42 @@ class PlayerActivity : AppCompatActivity() {
 
     // --- JS Interface (Bridge) ---
 
-    inner class WebAppInterface(private val context: Context) {
+    class WebAppInterface(activity: PlayerActivity) {
+        private val activityRef = WeakReference(activity)
+
         @JavascriptInterface
         fun onErrorDetected() {
-            runOnUiThread {
-                if (!isVideoPlaying) {
+            val activity = activityRef.get() ?: return
+            activity.runOnUiThread {
+                if (!activity.isVideoPlaying) {
                     println("NC-FLIX: Dead Link Confirmed by JS (Visual Check)! Switching...")
-                    currentServerIndex++
-                    loadCurrentServer()
+                    activity.currentServerIndex++
+                    activity.loadCurrentServer()
                 }
             }
         }
 
         @JavascriptInterface
         fun onVideoStarted() {
-            runOnUiThread {
-                if (!isVideoPlaying) {
+            val activity = activityRef.get() ?: return
+            activity.runOnUiThread {
+                if (!activity.isVideoPlaying) {
                     println("NC-FLIX: Video Started! Locking server.")
-                    isVideoPlaying = true
-                    progressBar.visibility = View.GONE
-                    txtStatus.visibility = View.GONE
+                    activity.isVideoPlaying = true
+                    activity.progressBar.visibility = View.GONE
+                    activity.txtStatus.visibility = View.GONE
                 }
             }
         }
 
         @JavascriptInterface
         fun onPlayPauseToggled(state: String) {
-            runOnUiThread {
+            val activity = activityRef.get() ?: return
+            activity.runOnUiThread {
                 if (state == "play") {
-                    showGestureFeedback("▶")
+                    activity.showGestureFeedback("▶")
                 } else if (state == "pause") {
-                    showGestureFeedback("⏸")
+                    activity.showGestureFeedback("⏸")
                 }
             }
         }
