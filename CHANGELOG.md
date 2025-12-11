@@ -18,6 +18,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Fixed memory leaks in `PlayerActivity` by replacing `Handler` with `lifecycleScope` and using `WeakReference` for `JavascriptInterface`.
+
 ### Added
 - Created `CHANGELOG.md` to track project history.
 
