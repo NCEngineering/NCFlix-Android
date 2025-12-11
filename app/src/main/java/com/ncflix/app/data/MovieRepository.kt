@@ -107,8 +107,8 @@ class MovieRepository {
                     val title = titleElement.text().replace(Regex("^\\d+\\.\\s+"), "") // Remove "1. " prefix
                     // Use a higher res image if available in srcset, otherwise src
                     val poster = imgElement?.attr("src") ?: ""
-                    // Improve poster resolution hack (IMDb thumbnails are small)
-                    val highResPoster = poster.replace(Regex("UX\\d+"), "UX600").replace(Regex("CR\\d+,\\d+,\\d+,\\d+"), "")
+                    // Improve poster resolution using a robust regex pattern
+                    val highResPoster = getImdbPoster(poster)
 
                     movies.add(
                         Movie(
@@ -338,5 +338,15 @@ class MovieRepository {
         } catch (e: Exception) {
             return@withContext Resource.Error(e.message ?: "Search Error", e)
         }
+    }
+
+    private fun getImdbPoster(url: String): String {
+        if (url.isEmpty()) return ""
+        return url.replace(IMDB_POSTER_PATTERN, "\$1UX600\$2")
+    }
+
+    companion object {
+        // Regex: Capture base up to ._V1_ (Group 1), ignore middle, capture extension (Group 2)
+        private val IMDB_POSTER_PATTERN = Regex("(.*\\._V1_)(?:.*)(\\.[a-zA-Z]+)$")
     }
 }
