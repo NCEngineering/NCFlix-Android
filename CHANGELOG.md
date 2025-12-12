@@ -40,3 +40,5 @@
 - Performance: Optimized `AdBlocker` to reduce object allocation and redundant string processing on every network request.
   - Pre-computed lowercase ad hosts set to avoid (N)$ lowercasing in the loop.
   - Added `isAd(HttpUrl)` overload to avoid parsing `URI` objects from strings in `AdBlockInterceptor`, utilizing OkHttp's already-parsed `HttpUrl`.
+- Performance: Optimized `MovieAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
+  - Moved `OnClickListener` setup to `onCreateViewHolder`.

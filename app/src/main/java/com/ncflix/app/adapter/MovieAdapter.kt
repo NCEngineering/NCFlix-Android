@@ -50,13 +50,22 @@ class MovieAdapter(
         // We need to create this layout file next!
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_movie, parent, false)
-        return MovieViewHolder(view)
+        val holder = MovieViewHolder(view)
+
+        // Optimization: Set listener here to avoid object allocation in onBindViewHolder
+        view.setOnClickListener {
+            val position = holder.bindingAdapterPosition
+            if (position != RecyclerView.NO_POSITION) {
+                onMovieClick(movies[position])
+            }
+        }
+        return holder
     }
 
     /**
      * Called by the RecyclerView to display the data at the specified position.
      *
-     * This method loads the movie poster using Coil and sets up the click listener.
+     * This method loads the movie poster using Coil.
      *
      * @param holder The ViewHolder which should be updated to represent the contents of the
      * item at the given position in the data set.
@@ -69,10 +78,6 @@ class MovieAdapter(
         holder.poster.load(movie.posterUrl) {
             crossfade(true)
             placeholder(android.R.color.darker_gray)
-        }
-
-        holder.itemView.setOnClickListener {
-            onMovieClick(movie)
         }
     }
 
