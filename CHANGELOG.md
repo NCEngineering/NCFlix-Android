@@ -42,3 +42,5 @@
   - Added `isAd(HttpUrl)` overload to avoid parsing `URI` objects from strings in `AdBlockInterceptor`, utilizing OkHttp's already-parsed `HttpUrl`.
 - Performance: Optimized `MovieAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
   - Moved `OnClickListener` setup to `onCreateViewHolder`.
+- Performance: Optimized `EpisodeAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
+  - Moved `OnClickListener` setup to `onCreateViewHolder`.
