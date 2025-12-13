@@ -48,7 +48,17 @@ class EpisodeAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): EpisodeViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_episode, parent, false)
-        return EpisodeViewHolder(view)
+        val holder = EpisodeViewHolder(view)
+
+        // Optimization: Set listener here to avoid object allocation in onBindViewHolder
+        // This is a known pattern in this codebase (see MovieAdapter)
+        view.setOnClickListener {
+            val position = holder.bindingAdapterPosition
+            if (position != RecyclerView.NO_POSITION) {
+                onClick(episodes[position])
+            }
+        }
+        return holder
     }
 
     /**
@@ -64,10 +74,6 @@ class EpisodeAdapter(
     override fun onBindViewHolder(holder: EpisodeViewHolder, position: Int) {
         val episode = episodes[position]
         holder.title.text = episode.title
-
-        holder.itemView.setOnClickListener {
-            onClick(episode)
-        }
     }
 
     /**
