@@ -44,3 +44,5 @@
   - Moved `OnClickListener` setup to `onCreateViewHolder`.
 - Performance: Optimized `EpisodeAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
   - Moved `OnClickListener` setup to `onCreateViewHolder`.
+- Performance: Optimized `MovieRepository` scraping performance by pre-compiling Regex patterns.
+  - Replaced on-the-fly Regex creation in `fetchTop10Malaysia` loops with `companion object` constants to reduce memory allocation and CPU usage during parsing.
