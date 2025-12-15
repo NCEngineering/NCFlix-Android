@@ -49,3 +49,5 @@
   - Moved `OnClickListener` setup to `onCreateViewHolder`.
 - Performance: Optimized `MovieRepository` scraping performance by pre-compiling Regex patterns.
   - Replaced on-the-fly Regex creation in `fetchTop10Malaysia` loops with `companion object` constants to reduce memory allocation and CPU usage during parsing.
+- Performance: Optimized year parsing in `MovieRepository` scraping loop.
+  - Replaced Regex matching with manual character checks (`length` and `isDigit`) in `fetchTop10Malaysia` to avoid Regex overhead and reduce object allocation for every item.

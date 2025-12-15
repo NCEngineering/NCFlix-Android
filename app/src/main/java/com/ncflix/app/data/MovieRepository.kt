@@ -97,8 +97,10 @@ class MovieRepository {
                 val spans = item.select("span")
                 var year = ""
                 for (span in spans) {
-                    if (span.text().matches(YEAR_PATTERN)) {
-                        year = span.text()
+                    val text = span.text()
+                    // Optimization: Check length and digits manually to avoid Regex overhead and repeated text() calls
+                    if (text.length == 4 && text.all { it.isDigit() }) {
+                        year = text
                         break
                     }
                 }
@@ -348,9 +350,6 @@ class MovieRepository {
     companion object {
         // Regex: Capture base up to ._V1_ (Group 1), ignore middle, capture extension (Group 2)
         private val IMDB_POSTER_PATTERN = Regex("(.*\\._V1_)(?:.*)(\\.[a-zA-Z]+)$")
-
-        // Regex: Match exactly 4 digits (Year)
-        private val YEAR_PATTERN = Regex("^\\d{4}$")
 
         // Regex: Match "1. ", "2. ", etc. at start of string
         private val RANK_PREFIX_PATTERN = Regex("^\\d+\\.\\s+")
