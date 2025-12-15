@@ -5,11 +5,13 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Back up all shared preferences and database, but exclude device-specific config -->
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="device.xml"/>
         <include domain="database" path="."/>
     </cloud-backup>
     <device-transfer>
+        <!-- Transfer all shared preferences and database, but exclude device-specific config -->
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="device.xml"/>
         <include domain="database" path="."/>
