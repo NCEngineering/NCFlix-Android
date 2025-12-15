@@ -97,14 +97,14 @@ class MovieRepository {
                 val spans = item.select("span")
                 var year = ""
                 for (span in spans) {
-                    if (span.text().matches(Regex("^\\d{4}$"))) {
+                    if (span.text().matches(YEAR_PATTERN)) {
                         year = span.text()
                         break
                     }
                 }
 
                 if (titleElement != null) {
-                    val title = titleElement.text().replace(Regex("^\\d+\\.\\s+"), "") // Remove "1. " prefix
+                    val title = titleElement.text().replace(RANK_PREFIX_PATTERN, "") // Remove "1. " prefix
                     // Use a higher res image if available in srcset, otherwise src
                     val poster = imgElement?.attr("src") ?: ""
                     // Improve poster resolution using a robust regex pattern
@@ -348,5 +348,11 @@ class MovieRepository {
     companion object {
         // Regex: Capture base up to ._V1_ (Group 1), ignore middle, capture extension (Group 2)
         private val IMDB_POSTER_PATTERN = Regex("(.*\\._V1_)(?:.*)(\\.[a-zA-Z]+)$")
+
+        // Regex: Match exactly 4 digits (Year)
+        private val YEAR_PATTERN = Regex("^\\d{4}$")
+
+        // Regex: Match "1. ", "2. ", etc. at start of string
+        private val RANK_PREFIX_PATTERN = Regex("^\\d+\\.\\s+")
     }
 }
