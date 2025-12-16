@@ -50,7 +50,8 @@ class MovieRepository {
                     }
 
                     // Filter invalid titles (from Python script logic)
-                    if (title.isEmpty() || title.uppercase() in listOf("WEB-DL", "HD", "CAM")) continue
+                    // Optimization: Use constant set and avoid unnecessary uppercase allocation
+                    if (title.isEmpty() || INVALID_TITLES.any { title.equals(it, ignoreCase = true) }) continue
 
                     val link = linkTag.attr("abs:href")
                     // Fetch poster: Try 'data-original' (lazy load) then standard 'src'
@@ -353,5 +354,8 @@ class MovieRepository {
 
         // Regex: Match "1. ", "2. ", etc. at start of string
         private val RANK_PREFIX_PATTERN = Regex("^\\d+\\.\\s+")
+
+        // Optimization: Define invalid titles as a constant set to avoid list creation in loop
+        private val INVALID_TITLES = setOf("WEB-DL", "HD", "CAM")
     }
 }
