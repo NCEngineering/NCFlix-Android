@@ -5,3 +5,7 @@
 ## 2024-05-23 - String Allocation in Scraping Loops
 **Learning:** Calling `uppercase()` or `lowercase()` on strings inside tight loops (like Jsoup element iteration) creates significant GC pressure. Using `equals(..., ignoreCase = true)` is an O(1) allocation-free alternative.
 **Action:** When filtering strings in a loop, pre-compute static comparison sets and use `equals(ignoreCase = true)` instead of normalizing the input string.
+
+## 2024-05-24 - Adapter Instantiation in Flow Collection
+**Learning:** Instantiating `RecyclerView.Adapter` inside a Flow's `collect` block (or any observable callback) defeats the purpose of optimizations like `DiffUtil` because the adapter is completely replaced on every emission, forcing a full layout pass.
+**Action:** Always instantiate adapters in `onCreate` (or `init`), assign them to the RecyclerView once, and only call `submitList` (or `notify...`) inside the data observation block.
