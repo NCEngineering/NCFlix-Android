@@ -28,14 +28,28 @@ object AdBlocker {
         "bet365", "1xbet", "casino", "gambling"
     ).map { it.lowercase(Locale.ROOT) }.toSet()
 
+    /**
+     * Checks if the host contains any known ad domain keywords.
+     * Expects the host to be non-null.
+     */
+    fun isAdHost(host: String): Boolean {
+        val lowerHost = host.lowercase(Locale.ROOT)
+        return AD_HOSTS.any { lowerHost.contains(it) }
+    }
+
     fun isAd(url: String): Boolean {
-        val host = try { java.net.URI(url).host?.lowercase(Locale.ROOT) ?: "" } catch (e: Exception) { url.lowercase(Locale.ROOT) }
-        return AD_HOSTS.any { host.contains(it) }
+        val host = try {
+            java.net.URI(url).host ?: ""
+        } catch (e: Exception) {
+            // Fallback for malformed URLs or when parsing fails
+            url
+        }
+        return isAdHost(host)
     }
 
     fun isAd(url: HttpUrl): Boolean {
-        val host = url.host // HttpUrl host is already lowercased and punycode decoded
-        return AD_HOSTS.any { host.contains(it) }
+        // HttpUrl host is already lowercased and punycode decoded
+        return isAdHost(url.host)
     }
 
     /**
