@@ -43,6 +43,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var homeSectionViews: List<View>
 
+    // Adapters as properties to reuse instances
+    private lateinit var trendingAdapter: MovieAdapter
+    private lateinit var seriesAdapter: MovieAdapter
+    private lateinit var moviesAdapter: MovieAdapter
+    private lateinit var mostViewedAdapter: MovieAdapter
+    private lateinit var malaysiaAdapter: MovieAdapter
+    // Search adapter shares the trending recycler view, so we can reuse trendingAdapter or create a specific one
+    // In this app logic, rvTrending is used for search results.
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -79,6 +88,20 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+
+            // Initialize Adapters
+            trendingAdapter = MovieAdapter { openPlayer(it) }
+            seriesAdapter = MovieAdapter { openPlayer(it) }
+            moviesAdapter = MovieAdapter { openPlayer(it) }
+            mostViewedAdapter = MovieAdapter { openPlayer(it) }
+            malaysiaAdapter = MovieAdapter { openPlayer(it) }
+
+            // Attach Adapters to RecyclerViews
+            rvTrending.adapter = trendingAdapter
+            rvSeries.adapter = seriesAdapter
+            rvMovies.adapter = moviesAdapter
+            rvMostViewed.adapter = mostViewedAdapter
+            rvMalaysia.adapter = malaysiaAdapter
 
             // Initialize list with explicit type to avoid ArrayStoreException
             homeSectionViews = listOf<View>(
@@ -162,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                     launch {
                         viewModel.seriesState.collect { state ->
                             if (viewModel.searchState.value == null && state is Resource.Success) {
-                                rvSeries.adapter = MovieAdapter(state.data) { openPlayer(it) }
+                                seriesAdapter.submitList(state.data)
                                 rvSeries.isVisible = true
                             }
                         }
@@ -171,7 +194,7 @@ class MainActivity : AppCompatActivity() {
                     launch {
                         viewModel.moviesState.collect { state ->
                             if (viewModel.searchState.value == null && state is Resource.Success) {
-                                rvMovies.adapter = MovieAdapter(state.data) { openPlayer(it) }
+                                moviesAdapter.submitList(state.data)
                                 rvMovies.isVisible = true
                             }
                         }
@@ -180,7 +203,7 @@ class MainActivity : AppCompatActivity() {
                     launch {
                         viewModel.mostViewedState.collect { state ->
                             if (viewModel.searchState.value == null && state is Resource.Success) {
-                                rvMostViewed.adapter = MovieAdapter(state.data) { openPlayer(it) }
+                                mostViewedAdapter.submitList(state.data)
                                 rvMostViewed.isVisible = true
                             }
                         }
@@ -189,7 +212,7 @@ class MainActivity : AppCompatActivity() {
                     launch {
                         viewModel.malaysiaState.collect { state ->
                             if (viewModel.searchState.value == null && state is Resource.Success) {
-                                rvMalaysia.adapter = MovieAdapter(state.data) { openPlayer(it) }
+                                malaysiaAdapter.submitList(state.data)
                                 rvMalaysia.isVisible = true
                             }
                         }
@@ -212,10 +235,8 @@ class MainActivity : AppCompatActivity() {
                                         loadingIndicator.visibility = View.GONE
                                         rvTrending.visibility = View.VISIBLE
 
-                                        val adapter = MovieAdapter(state.data) { selectedMovie ->
-                                            openPlayer(selectedMovie)
-                                        }
-                                        rvTrending.adapter = adapter
+                                        // Reuse trendingAdapter for search results
+                                        trendingAdapter.submitList(state.data)
 
                                         if (state.data.isEmpty()) {
                                             Toast.makeText(this@MainActivity, "No results found", Toast.LENGTH_SHORT).show()
@@ -281,10 +302,7 @@ class MainActivity : AppCompatActivity() {
                 txtHeroTitle.text = heroMovie.title
                 btnPlayHero.setOnClickListener { openPlayer(heroMovie) }
 
-                val adapter = MovieAdapter(trendingList) { selectedMovie ->
-                    openPlayer(selectedMovie)
-                }
-                rvTrending.adapter = adapter
+                trendingAdapter.submitList(trendingList)
             }
             is Resource.Error -> {
                 loadingIndicator.visibility = View.GONE

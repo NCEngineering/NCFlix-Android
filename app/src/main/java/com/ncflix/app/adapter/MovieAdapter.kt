@@ -4,6 +4,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.ncflix.app.R
@@ -15,13 +17,13 @@ import com.ncflix.app.model.Movie
  * This adapter binds [Movie] objects to the corresponding views, primarily displaying the movie poster.
  * It uses the Coil library for image loading.
  *
- * @property movies The list of [Movie] objects to display.
+ * Optimized with [ListAdapter] and [DiffUtil] for efficient updates and animations.
+ *
  * @property onMovieClick The callback function to be invoked when a movie item is clicked.
  */
 class MovieAdapter(
-    private val movies: List<Movie>,
     private val onMovieClick: (Movie) -> Unit
-) : RecyclerView.Adapter<MovieAdapter.MovieViewHolder>() {
+) : ListAdapter<Movie, MovieAdapter.MovieViewHolder>(MovieDiffCallback) {
 
     /**
      * ViewHolder for a movie item.
@@ -47,7 +49,6 @@ class MovieAdapter(
      * @return A new [MovieViewHolder] that holds a View of the given view type.
      */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MovieViewHolder {
-        // We need to create this layout file next!
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_movie, parent, false)
         val holder = MovieViewHolder(view)
@@ -56,7 +57,7 @@ class MovieAdapter(
         view.setOnClickListener {
             val position = holder.bindingAdapterPosition
             if (position != RecyclerView.NO_POSITION) {
-                onMovieClick(movies[position])
+                onMovieClick(getItem(position))
             }
         }
         return holder
@@ -72,7 +73,7 @@ class MovieAdapter(
      * @param position The position of the item within the adapter's data set.
      */
     override fun onBindViewHolder(holder: MovieViewHolder, position: Int) {
-        val movie = movies[position]
+        val movie = getItem(position)
 
         // Load image using Coil library
         holder.poster.load(movie.posterUrl) {
@@ -81,10 +82,17 @@ class MovieAdapter(
         }
     }
 
-    /**
-     * Returns the total number of items in the data set held by the adapter.
-     *
-     * @return The total number of movies in this adapter.
-     */
-    override fun getItemCount() = movies.size
+    companion object {
+        private val MovieDiffCallback = object : DiffUtil.ItemCallback<Movie>() {
+            override fun areItemsTheSame(oldItem: Movie, newItem: Movie): Boolean {
+                // Use pageLink as a unique identifier for the movie
+                return oldItem.pageLink == newItem.pageLink
+            }
+
+            override fun areContentsTheSame(oldItem: Movie, newItem: Movie): Boolean {
+                // Data class equals() handles content comparison
+                return oldItem == newItem
+            }
+        }
+    }
 }

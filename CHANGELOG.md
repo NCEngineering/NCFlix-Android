@@ -39,15 +39,20 @@
 
 ### Changed
 - Updated `DAILY_CHECKLIST.md` to reflect successful verification on 2025-12-09.
-## [Unreleased]
-- Performance: Optimized `AdBlocker` to reduce object allocation and redundant string processing on every network request.
+
+### Performance
+- Optimized `AdBlocker` to reduce object allocation and redundant string processing on every network request.
   - Pre-computed lowercase ad hosts set to avoid (N)$ lowercasing in the loop.
   - Added `isAd(HttpUrl)` overload to avoid parsing `URI` objects from strings in `AdBlockInterceptor`, utilizing OkHttp's already-parsed `HttpUrl`.
-- Performance: Optimized `MovieAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
+- Optimized `MovieAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
   - Moved `OnClickListener` setup to `onCreateViewHolder`.
-- Performance: Optimized `EpisodeAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
+- Optimized `EpisodeAdapter` scrolling performance by reducing object allocation in `onBindViewHolder`.
   - Moved `OnClickListener` setup to `onCreateViewHolder`.
-- Performance: Optimized `MovieRepository` scraping performance by pre-compiling Regex patterns.
+- Optimized `MovieRepository` scraping performance by pre-compiling Regex patterns.
   - Replaced on-the-fly Regex creation in `fetchTop10Malaysia` loops with `companion object` constants to reduce memory allocation and CPU usage during parsing.
-- Performance: Optimized year parsing in `MovieRepository` scraping loop.
+- Optimized year parsing in `MovieRepository` scraping loop.
   - Replaced Regex matching with manual character checks (`length` and `isDigit`) in `fetchTop10Malaysia` to avoid Regex overhead and reduce object allocation for every item.
+- Optimized `MovieAdapter` list updates by migrating to `ListAdapter` and `DiffUtil`.
+  - Enables efficient background diffing of list changes.
+  - Prevents full list rebinds on updates, critical for search performance.
+- Optimized `MainActivity` to reuse RecyclerView adapter instances instead of recreating them on every data update.
