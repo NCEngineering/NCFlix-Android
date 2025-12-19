@@ -349,6 +349,8 @@ class MovieRepository {
     }
 
     companion object {
+        private val INVALID_TITLES = setOf("WEB-DL", "HD", "CAM")
+
         // Regex: Capture base up to ._V1_ (Group 1), ignore middle, capture extension (Group 2)
         private val IMDB_POSTER_PATTERN = Regex("(.*\\._V1_)(?:.*)(\\.[a-zA-Z]+)$")
 
