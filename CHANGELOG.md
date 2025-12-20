@@ -21,6 +21,7 @@
 
 ### Added
 - Configured and verified backup rules in `data_extraction_rules.xml` and `backup_rules.xml` to include shared preferences and databases, while excluding `device.xml` for future persistence needs.
+- Enhanced backup rules to also include `file` domain (internal storage files) in `data_extraction_rules.xml` and `backup_rules.xml` for comprehensive future data persistence.
 
 ### Fixed
 - Fixed memory leaks in `PlayerActivity` by replacing `Handler` with `lifecycleScope` and using `WeakReference` for `JavascriptInterface`.

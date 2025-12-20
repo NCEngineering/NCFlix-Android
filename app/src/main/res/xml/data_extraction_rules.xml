@@ -9,11 +9,13 @@
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="device.xml"/>
         <include domain="database" path="."/>
+        <include domain="file" path="."/>
     </cloud-backup>
     <device-transfer>
         <!-- Transfer all shared preferences and database, but exclude device-specific config -->
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="device.xml"/>
         <include domain="database" path="."/>
+        <include domain="file" path="."/>
     </device-transfer>
 </data-extraction-rules>

@@ -9,5 +9,6 @@
    <!-- Back up all shared preferences and database, but exclude device-specific config -->
    <include domain="sharedpref" path="."/>
    <include domain="database" path="."/>
+   <include domain="file" path="."/>
    <exclude domain="sharedpref" path="device.xml"/>
 </full-backup-content>
