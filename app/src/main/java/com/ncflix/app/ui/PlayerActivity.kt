@@ -193,10 +193,12 @@ class PlayerActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val url = request?.url.toString()
+                val uri = request?.url
                 // Allow everything unless it's explicitly an Ad
-                if (url != null && AdBlocker.isAd(url)) {
-                    println("NC-FLIX: Nav Blocked (Ad) -> $url")
+                // Optimization: Use pre-parsed host from Android Uri to avoid expensive java.net.URI parsing
+                val host = uri?.host
+                if (host != null && AdBlocker.isAdHost(host)) {
+                    println("NC-FLIX: Nav Blocked (Ad) -> $uri")
                     return true
                 }
                 return false // Allow WebView to load the redirect
@@ -224,16 +226,17 @@ class PlayerActivity : AppCompatActivity() {
             }
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                val url = request?.url.toString()
+                val uri = request?.url
+                val urlString = uri.toString()
                 
                 // Sniffer Logic
-                if (url != null) {
-                    val lowerUrl = url.lowercase()
+                if (uri != null) {
+                    val lowerUrl = urlString.lowercase()
                     if (lowerUrl.contains(".mp4") || lowerUrl.contains(".m3u8") || lowerUrl.contains(".mkv") || lowerUrl.contains(".ts")) {
                          // Filter out small segments if possible, but for now capture all potential streams
                          if (!lowerUrl.contains("favicon") && !lowerUrl.contains(".png")) {
-                             if (capturedVideoUrl != url) {
-                                 capturedVideoUrl = url
+                             if (capturedVideoUrl != urlString) {
+                                 capturedVideoUrl = urlString
                                  runOnUiThread {
                                      if (panelVideoDetected.visibility != View.VISIBLE) {
                                          panelVideoDetected.visibility = View.VISIBLE
@@ -245,8 +248,10 @@ class PlayerActivity : AppCompatActivity() {
                     }
                 }
 
-                if (AdBlocker.isAd(url)) {
-                    println("NC-FLIX: Res Blocked (Ad) -> $url")
+                // Optimization: Use pre-parsed host from Android Uri to avoid expensive java.net.URI parsing
+                val host = uri?.host
+                if (host != null && AdBlocker.isAdHost(host)) {
+                    println("NC-FLIX: Res Blocked (Ad) -> $urlString")
                     return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
                 }
                 return super.shouldInterceptRequest(view, request)
