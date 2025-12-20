@@ -8,7 +8,8 @@ import java.util.Locale
 
 object AdBlocker {
     // Comprehensive list of ad/tracker domains common on streaming sites
-    private val AD_HOSTS = setOf(
+    // Optimization: Use List for faster iteration than Set (no hashing overhead), and pre-lowercase.
+    private val AD_KEYWORDS = listOf(
         // Big Tech
         "googleads", "doubleclick", "analytics", "facebook.com", "connect.facebook.net",
         "googletagservices", "adservice.google", "clients1.google",
@@ -26,15 +27,25 @@ object AdBlocker {
         "jads", "juicyads", "exoclick", "trafficjunky", "ero-advertising",
         "tsyndicate", "plugrush", "trafficfactory", "adxpansion",
         "bet365", "1xbet", "casino", "gambling"
-    ).map { it.lowercase(Locale.ROOT) }.toSet()
+    ).map { it.lowercase(Locale.ROOT) }
 
     /**
      * Checks if the host contains any known ad domain keywords.
-     * Expects the host to be non-null.
+     * Host must be already lowercased.
+     * This avoids redundant allocations when calling from HttpUrl or other pre-normalized sources.
+     */
+    fun isAdHostRaw(lowerHost: String): Boolean {
+        // Optimization: Iterating List is faster than Set for small collections (linear scan vs hash)
+        // and we avoid .lowercase() on every check if caller has it.
+        return AD_KEYWORDS.any { lowerHost.contains(it) }
+    }
+
+    /**
+     * Checks if the host contains any known ad domain keywords.
+     * Expects the host to be non-null. Safe for mixed-case inputs.
      */
     fun isAdHost(host: String): Boolean {
-        val lowerHost = host.lowercase(Locale.ROOT)
-        return AD_HOSTS.any { lowerHost.contains(it) }
+        return isAdHostRaw(host.lowercase(Locale.ROOT))
     }
 
     fun isAd(url: String): Boolean {
@@ -49,7 +60,7 @@ object AdBlocker {
 
     fun isAd(url: HttpUrl): Boolean {
         // HttpUrl host is already lowercased and punycode decoded
-        return isAdHost(url.host)
+        return isAdHostRaw(url.host)
     }
 
     /**
