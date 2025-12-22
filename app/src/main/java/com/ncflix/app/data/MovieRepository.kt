@@ -356,8 +356,5 @@ class MovieRepository {
 
         // Regex: Match "1. ", "2. ", etc. at start of string
         private val RANK_PREFIX_PATTERN = Regex("^\\d+\\.\\s+")
-
-        // Optimization: Define invalid titles as a constant set to avoid list creation in loop
-        private val INVALID_TITLES = setOf("WEB-DL", "HD", "CAM")
     }
 }
