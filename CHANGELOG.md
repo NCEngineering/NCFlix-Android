@@ -42,6 +42,9 @@
 - Updated `DAILY_CHECKLIST.md` to reflect successful verification on 2025-12-09.
 
 ### Performance
+- Optimized `AdBlocker` by introducing a `ConcurrentHashMap` cache for domain checks.
+  - Reduces repetitive ad-checking complexity from O(N*M) to O(1) for visited domains.
+  - Removed redundant `AD_BLOCK_DOMAINS` from `Constants.kt` to reduce static memory usage.
 - Optimized `AdBlocker` to reduce object allocation and redundant string processing on every network request.
   - Replaced `Set` with `List` for ad keywords to improve iteration speed.
   - Implemented `isAdHostRaw` to skip redundant lowercasing when source is already normalized (e.g., `HttpUrl`).

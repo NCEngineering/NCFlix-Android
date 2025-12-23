@@ -33,16 +33,4 @@ object Constants {
      * Pre-computed Cookie header string to avoid allocation on every request.
      */
     val COOKIE_HEADER: String = COOKIES.entries.joinToString("; ") { "${it.key}=${it.value}" }
-
-    /**
-     * A set of domain keywords used to identify and block advertisement URLs in the player.
-     */
-    val AD_BLOCK_DOMAINS = setOf(
-        "googleads", "doubleclick", "analytics", "facebook.com", "connect.facebook.net",
-        "adsco.re", "pop", "bet", "casino", "mc.yandex", "creativecdn",
-        "googletagmanager", "scorecardresearch", "quantserve", "adroll",
-        "taboola", "outbrain", "zedo", "click", "tracker", "pixel", "adsystem",
-        "histats", "statcounter", "popads", "popcash", "propellerads", "revenuehits", "upsetking.com",
-        "walterprettytheir.com"
-    )
 }
