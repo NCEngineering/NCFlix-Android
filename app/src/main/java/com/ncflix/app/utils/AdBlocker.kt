@@ -5,6 +5,7 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 object AdBlocker {
     // Comprehensive list of ad/tracker domains common on streaming sites
@@ -29,17 +30,28 @@ object AdBlocker {
         "bet365", "1xbet", "casino", "gambling"
     ).map { it.lowercase(Locale.ROOT) }.toTypedArray()
 
+    // Optimization: Cache results to avoid O(N*M) loop on repeated host checks (common in WebViews)
+    private val hostCache = ConcurrentHashMap<String, Boolean>()
+
     /**
      * Checks if the host contains any known ad domain keywords.
      * Host must be already lowercased.
      * This avoids redundant allocations when calling from HttpUrl or other pre-normalized sources.
      */
     fun isAdHostRaw(lowerHost: String): Boolean {
+        // Optimization: Check cache first
+        hostCache[lowerHost]?.let { return it }
+
         // Optimization: Explicit loop over Array avoids Iterator allocation vs List.any
         // This is ~40% faster in benchmarks for this use case.
         for (keyword in AD_KEYWORDS) {
-            if (lowerHost.contains(keyword)) return true
+            if (lowerHost.contains(keyword)) {
+                hostCache[lowerHost] = true
+                return true
+            }
         }
+
+        hostCache[lowerHost] = false
         return false
     }
 
