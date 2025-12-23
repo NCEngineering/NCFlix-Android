@@ -62,3 +62,6 @@
 - Optimized `PlayerActivity` ad-blocking checks to avoid expensive `java.net.URI` parsing.
   - Refactored `AdBlocker` to expose `isAdHost` for direct host checking.
   - Updated `WebViewClient` to use `android.net.Uri` properties directly, providing a ~21x speedup in ad detection logic.
+- Optimized `NetworkClient` request interceptor.
+  - Pre-computed cookie header string in `Constants` to eliminate allocation on every request.
+  - Switched from `url.toString().contains()` to `url.host.contains()` to avoid full URL string allocation and prevent potential cookie leakage to non-target hosts.

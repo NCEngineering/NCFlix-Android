@@ -17,7 +17,6 @@ object NetworkClient {
             // Emulate a real browser to avoid basic blocking
             .addInterceptor { chain ->
                 val original = chain.request()
-                val url = original.url.toString()
                 
                 val requestBuilder = original.newBuilder()
                     .header("User-Agent", Constants.USER_AGENT)
@@ -25,9 +24,9 @@ object NetworkClient {
                     .header("Accept-Language", "en-US,en;q=0.5")
 
                 // Only add specific headers for the target site to avoid leaking cookies/referer to external sites (like IMDb)
-                if (url.contains("pencurimovie")) {
-                    val cookieHeader = Constants.COOKIES.entries.joinToString("; ") { "${it.key}=${it.value}" }
-                    requestBuilder.header("Cookie", cookieHeader)
+                // Optimization: Check host directly to avoid string allocation and improve security
+                if (original.url.host.contains("pencurimovie")) {
+                    requestBuilder.header("Cookie", Constants.COOKIE_HEADER)
                     requestBuilder.header("Referer", Constants.BASE_URL)
                 }
                 

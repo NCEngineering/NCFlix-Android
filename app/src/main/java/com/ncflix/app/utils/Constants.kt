@@ -30,6 +30,11 @@ object Constants {
     )
 
     /**
+     * Pre-computed Cookie header string to avoid allocation on every request.
+     */
+    val COOKIE_HEADER: String = COOKIES.entries.joinToString("; ") { "${it.key}=${it.value}" }
+
+    /**
      * A set of domain keywords used to identify and block advertisement URLs in the player.
      */
     val AD_BLOCK_DOMAINS = setOf(
