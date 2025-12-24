@@ -17,3 +17,7 @@
 ## 2024-05-24 - Memoization of Finite Domain Checks
 **Learning:** Iterating over a list of ~50 string keywords (O(N*M)) for every network request is wasteful when the set of visited domains is relatively small and repetitive.
 **Action:** Use a `ConcurrentHashMap` to cache the boolean result of domain checks. This turns frequent checks into O(1) lookups, significantly reducing CPU usage in network-heavy apps (like those using WebViews).
+
+## 2024-05-25 - String Lowercasing in WebView Interceptors
+**Learning:** `shouldInterceptRequest` is called for every resource (images, scripts, etc.). Allocating a new string with `lowercase()` for every request creates unnecessary GC churn.
+**Action:** Use `contains(..., ignoreCase = true)` instead of lowercasing the entire URL string to perform case-insensitive checks without allocation.
