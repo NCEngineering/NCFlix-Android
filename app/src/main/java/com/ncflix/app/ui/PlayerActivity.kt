@@ -227,14 +227,18 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                 val uri = request?.url
-                val urlString = uri.toString()
                 
                 // Sniffer Logic
                 if (uri != null) {
-                    val lowerUrl = urlString.lowercase()
-                    if (lowerUrl.contains(".mp4") || lowerUrl.contains(".m3u8") || lowerUrl.contains(".mkv") || lowerUrl.contains(".ts")) {
+                    val urlString = uri.toString()
+                    // Optimization: Avoid allocation of lowercased string in hot path
+                    if (urlString.contains(".mp4", ignoreCase = true) ||
+                        urlString.contains(".m3u8", ignoreCase = true) ||
+                        urlString.contains(".mkv", ignoreCase = true) ||
+                        urlString.contains(".ts", ignoreCase = true)) {
+
                          // Filter out small segments if possible, but for now capture all potential streams
-                         if (!lowerUrl.contains("favicon") && !lowerUrl.contains(".png")) {
+                         if (!urlString.contains("favicon", ignoreCase = true) && !urlString.contains(".png", ignoreCase = true)) {
                              if (capturedVideoUrl != urlString) {
                                  capturedVideoUrl = urlString
                                  runOnUiThread {
@@ -246,13 +250,13 @@ class PlayerActivity : AppCompatActivity() {
                              }
                          }
                     }
-                }
 
-                // Optimization: Use pre-parsed host from Android Uri to avoid expensive java.net.URI parsing
-                val host = uri?.host
-                if (host != null && AdBlocker.isAdHost(host)) {
-                    println("NC-FLIX: Res Blocked (Ad) -> $urlString")
-                    return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
+                    // Optimization: Use pre-parsed host from Android Uri to avoid expensive java.net.URI parsing
+                    val host = uri.host
+                    if (host != null && AdBlocker.isAdHost(host)) {
+                        println("NC-FLIX: Res Blocked (Ad) -> $urlString")
+                        return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
+                    }
                 }
                 return super.shouldInterceptRequest(view, request)
             }
