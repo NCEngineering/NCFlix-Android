@@ -68,3 +68,6 @@
 - Optimized `NetworkClient` request interceptor.
   - Pre-computed cookie header string in `Constants` to eliminate allocation on every request.
   - Switched from `url.toString().contains()` to `url.host.contains()` to avoid full URL string allocation and prevent potential cookie leakage to non-target hosts.
+
+## 2025-12-25
+- ⚡ Bolt: Reuse shared OkHttpClient in UpdateChecker to reduce memory overhead and leverage connection pooling.
