@@ -17,3 +17,6 @@
 ## 2024-05-24 - Memoization of Finite Domain Checks
 **Learning:** Iterating over a list of ~50 string keywords (O(N*M)) for every network request is wasteful when the set of visited domains is relatively small and repetitive.
 **Action:** Use a `ConcurrentHashMap` to cache the boolean result of domain checks. This turns frequent checks into O(1) lookups, significantly reducing CPU usage in network-heavy apps (like those using WebViews).
+## 2024-05-24 - Jsoup InputStream Parsing
+**Learning:** Loading a full HTML response body into a String via `response.body?.string()` allocates memory for the entire content at once (2 bytes per char). For large pages (100KB+), this causes noticeable GC pressure.
+**Action:** Use `Jsoup.parse(response.body!!.byteStream(), charset, url)` to parse directly from the network stream. This avoids the intermediate String allocation entirely.

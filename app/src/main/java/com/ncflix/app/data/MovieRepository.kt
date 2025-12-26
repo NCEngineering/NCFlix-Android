@@ -7,6 +7,7 @@ import com.ncflix.app.utils.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.util.regex.Pattern
@@ -26,9 +27,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
 
-            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
-
-            val doc = Jsoup.parse(html, Constants.BASE_URL)
+            val doc = parseResponse(response, Constants.BASE_URL)
             // Logic aligned with pencuri_cli.py: Support 'article' fallback
             var items = doc.select("div.ml-item")
             if (items.isEmpty()) {
@@ -84,8 +83,7 @@ class MovieRepository {
                 .build()
 
             val response = client.newCall(request).execute()
-            val html = response.body?.string() ?: throw Exception("Empty response")
-            val doc = Jsoup.parse(html, url)
+            val doc = parseResponse(response, url)
 
             val items = doc.select("li.ipc-metadata-list-summary-item")
             val movies = mutableListOf<Movie>()
@@ -158,8 +156,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
 
-            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
-            val doc = Jsoup.parse(html, url)
+            val doc = parseResponse(response, url)
 
             val list = parseMovies(doc)
             return@withContext Resource.Success(list)
@@ -178,8 +175,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Failed to load episodes: ${response.code}")
 
-            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
-            val doc = Jsoup.parse(html, seriesUrl)
+            val doc = parseResponse(response, seriesUrl)
 
             val seasonsMap = mutableMapOf<String, MutableList<Movie>>()
 
@@ -228,8 +224,7 @@ class MovieRepository {
                 .build()
 
             val responsePage = client.newCall(requestPage).execute()
-            val pageHtml = responsePage.body?.string() ?: return@withContext Resource.Error("Failed to load page")
-            val doc = Jsoup.parse(pageHtml, episodeUrl)
+            val doc = parseResponse(responsePage, episodeUrl)
 
             // Logic adapted from pencuri_cli.py
             // 1. Search for standard tabs (id starting with "tab")
@@ -307,8 +302,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Search failed: ${response.code}")
 
-            val html = response.body?.string() ?: return@withContext Resource.Error("Empty response")
-            val doc = Jsoup.parse(html, searchUrl)
+            val doc = parseResponse(response, searchUrl)
 
             // Search results also use "div.ml-item"
             val movieList = mutableListOf<Movie>()
@@ -341,6 +335,16 @@ class MovieRepository {
         } catch (e: Exception) {
             return@withContext Resource.Error(e.message ?: "Search Error", e)
         }
+    }
+
+    /**
+     * Helper to parse HTML directly from response stream to reduce memory allocation.
+     */
+    private fun parseResponse(response: Response, url: String): Document {
+        val body = response.body ?: throw Exception("Empty response body")
+        // Use charset from Content-Type or default to UTF-8
+        val charset = body.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+        return Jsoup.parse(body.byteStream(), charset, url)
     }
 
     private fun getImdbPoster(url: String): String {
