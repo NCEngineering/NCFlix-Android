@@ -231,10 +231,14 @@ class PlayerActivity : AppCompatActivity() {
                 
                 // Sniffer Logic
                 if (uri != null) {
-                    val lowerUrl = urlString.lowercase()
-                    if (lowerUrl.contains(".mp4") || lowerUrl.contains(".m3u8") || lowerUrl.contains(".mkv") || lowerUrl.contains(".ts")) {
+                    // Optimization: Avoid allocation of lowercased string for every request
+                    if (urlString.contains(".mp4", ignoreCase = true) ||
+                        urlString.contains(".m3u8", ignoreCase = true) ||
+                        urlString.contains(".mkv", ignoreCase = true) ||
+                        urlString.contains(".ts", ignoreCase = true)) {
+
                          // Filter out small segments if possible, but for now capture all potential streams
-                         if (!lowerUrl.contains("favicon") && !lowerUrl.contains(".png")) {
+                         if (!urlString.contains("favicon", ignoreCase = true) && !urlString.contains(".png", ignoreCase = true)) {
                              if (capturedVideoUrl != urlString) {
                                  capturedVideoUrl = urlString
                                  runOnUiThread {
