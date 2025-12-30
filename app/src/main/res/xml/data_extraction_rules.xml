@@ -1,21 +1,27 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Data Extraction Rules
+   Configures what data is included in cloud backups and device-to-device transfers.
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- Back up all shared preferences and database, but exclude device-specific config -->
+        <!-- Explicitly include all storage domains for comprehensive backup -->
         <include domain="sharedpref" path="."/>
-        <exclude domain="sharedpref" path="device.xml"/>
         <include domain="database" path="."/>
         <include domain="file" path="."/>
+
+        <!-- Exclude device-specific configurations to avoid conflict on restore -->
+        <exclude domain="sharedpref" path="device.xml"/>
     </cloud-backup>
+
     <device-transfer>
-        <!-- Transfer all shared preferences and database, but exclude device-specific config -->
+        <!-- Transfer all data including shared preferences, databases, and files -->
         <include domain="sharedpref" path="."/>
-        <exclude domain="sharedpref" path="device.xml"/>
         <include domain="database" path="."/>
         <include domain="file" path="."/>
+
+        <!-- Exclude device-specific configurations -->
+        <exclude domain="sharedpref" path="device.xml"/>
     </device-transfer>
 </data-extraction-rules>
