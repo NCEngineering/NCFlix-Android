@@ -257,7 +257,48 @@ class PlayerActivity : AppCompatActivity() {
                         println("NC-FLIX: Res Blocked (Ad) -> $urlString")
                         return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
                     }
+                val uri = request?.url ?: return super.shouldInterceptRequest(view, request)
+
+                // 1. Ad Blocking (Priority - fast reject)
+                // Check host first as it's a property of Uri to avoid expensive operations for blocked domains
+                val host = uri.host
+                if (host != null && AdBlocker.isAdHost(host)) {
+                    println("NC-FLIX: Res Blocked (Ad) -> $uri")
+                    return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
                 }
+
+                // 2. Sniffer Logic
+                // Optimization: Check path/query components first to avoid expensive toString() allocation for every request
+                val path = uri.path ?: ""
+                val query = uri.query ?: ""
+
+                val isVideoCandidate = path.contains(".mp4", ignoreCase = true) ||
+                        path.contains(".m3u8", ignoreCase = true) ||
+                        path.contains(".mkv", ignoreCase = true) ||
+                        path.contains(".ts", ignoreCase = true) ||
+                        query.contains(".mp4", ignoreCase = true) ||
+                        query.contains(".m3u8", ignoreCase = true) ||
+                        query.contains(".mkv", ignoreCase = true) ||
+                        query.contains(".ts", ignoreCase = true)
+
+                if (isVideoCandidate) {
+                    // Filter out common false positives (images, favicons)
+                    if (!path.contains("favicon", ignoreCase = true) && !path.contains(".png", ignoreCase = true) &&
+                        !query.contains("favicon", ignoreCase = true) && !query.contains(".png", ignoreCase = true)) {
+
+                        val urlString = uri.toString() // Only allocate now
+                        if (capturedVideoUrl != urlString) {
+                            capturedVideoUrl = urlString
+                            runOnUiThread {
+                                if (panelVideoDetected.visibility != View.VISIBLE) {
+                                    panelVideoDetected.visibility = View.VISIBLE
+                                    Toast.makeText(this@PlayerActivity, "Video Stream Captured!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return super.shouldInterceptRequest(view, request)
             }
         }
