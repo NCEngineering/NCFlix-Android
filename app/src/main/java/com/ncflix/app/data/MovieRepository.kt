@@ -28,6 +28,10 @@ class MovieRepository {
             if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
 
             val doc = parseResponse(response, Constants.BASE_URL)
+            val doc = response.body?.use {
+                val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+                Jsoup.parse(it.byteStream(), charset, Constants.BASE_URL)
+            } ?: return@withContext Resource.Error("Empty response")
             // Logic aligned with pencuri_cli.py: Support 'article' fallback
             var items = doc.select("div.ml-item")
             if (items.isEmpty()) {
@@ -84,6 +88,10 @@ class MovieRepository {
 
             val response = client.newCall(request).execute()
             val doc = parseResponse(response, url)
+            val doc = response.body?.use {
+                val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+                Jsoup.parse(it.byteStream(), charset, url)
+            } ?: throw Exception("Empty response")
 
             val items = doc.select("li.ipc-metadata-list-summary-item")
             val movies = mutableListOf<Movie>()
@@ -157,6 +165,10 @@ class MovieRepository {
             if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
 
             val doc = parseResponse(response, url)
+            val doc = response.body?.use {
+                val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+                Jsoup.parse(it.byteStream(), charset, url)
+            } ?: return@withContext Resource.Error("Empty response")
 
             val list = parseMovies(doc)
             return@withContext Resource.Success(list)
@@ -176,6 +188,10 @@ class MovieRepository {
             if (!response.isSuccessful) return@withContext Resource.Error("Failed to load episodes: ${response.code}")
 
             val doc = parseResponse(response, seriesUrl)
+            val doc = response.body?.use {
+                val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+                Jsoup.parse(it.byteStream(), charset, seriesUrl)
+            } ?: return@withContext Resource.Error("Empty response")
 
             val seasonsMap = mutableMapOf<String, MutableList<Movie>>()
 
@@ -225,6 +241,10 @@ class MovieRepository {
 
             val responsePage = client.newCall(requestPage).execute()
             val doc = parseResponse(responsePage, episodeUrl)
+            val doc = responsePage.body?.use {
+                val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+                Jsoup.parse(it.byteStream(), charset, episodeUrl)
+            } ?: return@withContext Resource.Error("Failed to load page")
 
             // Logic adapted from pencuri_cli.py
             // 1. Search for standard tabs (id starting with "tab")
@@ -303,6 +323,10 @@ class MovieRepository {
             if (!response.isSuccessful) return@withContext Resource.Error("Search failed: ${response.code}")
 
             val doc = parseResponse(response, searchUrl)
+            val doc = response.body?.use {
+                val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+                Jsoup.parse(it.byteStream(), charset, searchUrl)
+            } ?: return@withContext Resource.Error("Empty response")
 
             // Search results also use "div.ml-item"
             val movieList = mutableListOf<Movie>()

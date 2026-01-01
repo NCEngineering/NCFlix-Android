@@ -20,3 +20,7 @@
 ## 2024-05-24 - Jsoup InputStream Parsing
 **Learning:** Loading a full HTML response body into a String via `response.body?.string()` allocates memory for the entire content at once (2 bytes per char). For large pages (100KB+), this causes noticeable GC pressure.
 **Action:** Use `Jsoup.parse(response.body!!.byteStream(), charset, url)` to parse directly from the network stream. This avoids the intermediate String allocation entirely.
+
+## 2024-05-25 - String Lowercasing in WebView Interceptors
+**Learning:** `shouldInterceptRequest` is called for every resource (images, scripts, etc.). Allocating a new string with `lowercase()` for every request creates unnecessary GC churn.
+**Action:** Use `contains(..., ignoreCase = true)` instead of lowercasing the entire URL string to perform case-insensitive checks without allocation.

@@ -20,8 +20,13 @@ object NetworkClient {
                 
                 val requestBuilder = original.newBuilder()
                     .header("User-Agent", Constants.USER_AGENT)
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
-                    .header("Accept-Language", "en-US,en;q=0.5")
+
+                // Only add default Accept header if not already present (e.g. UpdateChecker uses specific JSON accept)
+                if (original.header("Accept") == null) {
+                    requestBuilder.header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+                }
+
+                requestBuilder.header("Accept-Language", "en-US,en;q=0.5")
 
                 // Only add specific headers for the target site to avoid leaking cookies/referer to external sites (like IMDb)
                 // Optimization: Check host directly to avoid string allocation and improve security

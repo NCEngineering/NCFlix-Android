@@ -1,8 +1,8 @@
 package com.ncflix.app.utils
 
+import com.ncflix.app.di.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
@@ -12,7 +12,8 @@ object UpdateChecker {
     private const val GITHUB_API_URL = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/latest"
 
     suspend fun checkForUpdate(currentVersion: String): UpdateResult = withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
+        // Reuse shared client to save resources (connection pool, thread pool, etc)
+        val client = NetworkClient.client
         val request = Request.Builder()
             .url(GITHUB_API_URL)
             .header("Accept", "application/vnd.github.v3+json")
