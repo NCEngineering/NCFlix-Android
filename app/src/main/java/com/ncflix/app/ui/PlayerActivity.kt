@@ -226,6 +226,37 @@ class PlayerActivity : AppCompatActivity() {
             }
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val uri = request?.url
+                
+                // Sniffer Logic
+                if (uri != null) {
+                    val urlString = uri.toString()
+                    // Optimization: Avoid allocation of lowercased string in hot path
+                    if (urlString.contains(".mp4", ignoreCase = true) ||
+                        urlString.contains(".m3u8", ignoreCase = true) ||
+                        urlString.contains(".mkv", ignoreCase = true) ||
+                        urlString.contains(".ts", ignoreCase = true)) {
+
+                         // Filter out small segments if possible, but for now capture all potential streams
+                         if (!urlString.contains("favicon", ignoreCase = true) && !urlString.contains(".png", ignoreCase = true)) {
+                             if (capturedVideoUrl != urlString) {
+                                 capturedVideoUrl = urlString
+                                 runOnUiThread {
+                                     if (panelVideoDetected.visibility != View.VISIBLE) {
+                                         panelVideoDetected.visibility = View.VISIBLE
+                                         Toast.makeText(this@PlayerActivity, "Video Stream Captured!", Toast.LENGTH_SHORT).show()
+                                     }
+                                 }
+                             }
+                         }
+                    }
+
+                    // Optimization: Use pre-parsed host from Android Uri to avoid expensive java.net.URI parsing
+                    val host = uri.host
+                    if (host != null && AdBlocker.isAdHost(host)) {
+                        println("NC-FLIX: Res Blocked (Ad) -> $urlString")
+                        return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream("".toByteArray()))
+                    }
                 val uri = request?.url ?: return super.shouldInterceptRequest(view, request)
 
                 // 1. Ad Blocking (Priority - fast reject)
