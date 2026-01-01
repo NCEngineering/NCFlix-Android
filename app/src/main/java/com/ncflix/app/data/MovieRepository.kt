@@ -7,6 +7,7 @@ import com.ncflix.app.utils.Resource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.util.regex.Pattern
@@ -26,6 +27,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
 
+            val doc = parseResponse(response, Constants.BASE_URL)
             val doc = response.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, Constants.BASE_URL)
@@ -85,6 +87,7 @@ class MovieRepository {
                 .build()
 
             val response = client.newCall(request).execute()
+            val doc = parseResponse(response, url)
             val doc = response.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, url)
@@ -161,6 +164,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Server Error: ${response.code}")
 
+            val doc = parseResponse(response, url)
             val doc = response.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, url)
@@ -183,6 +187,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Failed to load episodes: ${response.code}")
 
+            val doc = parseResponse(response, seriesUrl)
             val doc = response.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, seriesUrl)
@@ -235,6 +240,7 @@ class MovieRepository {
                 .build()
 
             val responsePage = client.newCall(requestPage).execute()
+            val doc = parseResponse(responsePage, episodeUrl)
             val doc = responsePage.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, episodeUrl)
@@ -316,6 +322,7 @@ class MovieRepository {
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext Resource.Error("Search failed: ${response.code}")
 
+            val doc = parseResponse(response, searchUrl)
             val doc = response.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, searchUrl)
@@ -352,6 +359,16 @@ class MovieRepository {
         } catch (e: Exception) {
             return@withContext Resource.Error(e.message ?: "Search Error", e)
         }
+    }
+
+    /**
+     * Helper to parse HTML directly from response stream to reduce memory allocation.
+     */
+    private fun parseResponse(response: Response, url: String): Document {
+        val body = response.body ?: throw Exception("Empty response body")
+        // Use charset from Content-Type or default to UTF-8
+        val charset = body.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
+        return Jsoup.parse(body.byteStream(), charset, url)
     }
 
     private fun getImdbPoster(url: String): String {

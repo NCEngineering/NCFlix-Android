@@ -69,6 +69,9 @@
 - Optimized `NetworkClient` request interceptor.
   - Pre-computed cookie header string in `Constants` to eliminate allocation on every request.
   - Switched from `url.toString().contains()` to `url.host.contains()` to avoid full URL string allocation and prevent potential cookie leakage to non-target hosts.
+- Optimized `MovieRepository` scraping to reduce memory pressure.
+  - Refactored all HTML parsing logic to use `Jsoup.parse(InputStream)` instead of `Jsoup.parse(String)`.
+  - This avoids allocating large String objects for the entire HTML response body, significantly reducing Garbage Collection pressure during scraping.
 
 ## 2025-12-25
 - ⚡ Bolt: Reuse shared OkHttpClient in UpdateChecker to reduce memory overhead and leverage connection pooling.
