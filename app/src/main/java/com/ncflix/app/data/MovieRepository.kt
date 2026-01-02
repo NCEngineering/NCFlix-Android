@@ -229,7 +229,10 @@ class MovieRepository {
         }
     }
 
-    // --- CRITICAL FIX: The WebView Player needs a LIST of embed URLs ---
+    /**
+     * Extracts a list of embed URLs for the WebView player from the episode page.
+     * Returns a Resource containing an ArrayList of stream URLs.
+     */
     suspend fun extractStreamUrl(episodeUrl: String): Resource<ArrayList<String>> = withContext(Dispatchers.IO) {
         val serverList = ArrayList<String>()
 
@@ -240,7 +243,6 @@ class MovieRepository {
                 .build()
 
             val responsePage = client.newCall(requestPage).execute()
-            val doc = parseResponse(responsePage, episodeUrl)
             val doc = responsePage.body?.use {
                 val charset = it.contentType()?.charset(Charsets.UTF_8)?.name() ?: "UTF-8"
                 Jsoup.parse(it.byteStream(), charset, episodeUrl)
